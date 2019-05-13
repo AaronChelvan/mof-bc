@@ -1,0 +1,10 @@
+version: '3'
+services:
+  node1:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+  miner1:
+    build:
+      context: ./miner
+      dockerfile: Dockerfile
