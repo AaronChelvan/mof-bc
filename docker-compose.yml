@@ -2,9 +2,9 @@ version: '3'
 services:
   node1:
     build:
-      context: ./node
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: node/Dockerfile
   miner1:
     build:
-      context: ./miner
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: miner/Dockerfile
