@@ -1,4 +1,3 @@
-package common;
 
 public class Driver {
 
