@@ -1,5 +1,4 @@
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -13,9 +12,11 @@ public class Miner {
 		
 		while (true) {
 			Socket connectionSocket = minerSocket.accept();
-			BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-			String clientSentence = inFromClient.readLine();
-			System.out.println(clientSentence);
+			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
+			Transaction t = (Transaction) in.readObject();
+			System.out.println(t);
+			
+			// Add the transaction to the block
 		}
 	}
 

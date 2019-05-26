@@ -1,10 +1,12 @@
+import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.UUID;
-public class Transaction {
-	
+
+public class Transaction implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 	private String timestamp; // Timestamp of creation
 	private String tid; // Transaction ID
 	private String prevTid; // Previous transaction ID
@@ -24,7 +26,7 @@ public class Transaction {
 	}
 	
 	// Compute the transaction ID by hashing the contents of the transaction
-	public String generateTid() {
+	public void setTid() {
 		MessageDigest md = null;
 		try {
 			md = MessageDigest.getInstance("SHA-256");
@@ -37,7 +39,7 @@ public class Transaction {
 		md.update(output.getBytes());
 		md.update(signature.getBytes());
 		md.update(pubKey.getBytes());
-		return new String(md.digest());
+		tid = new String(md.digest());
 	}
 	
 	public void setPrevTid(String prevTid) {

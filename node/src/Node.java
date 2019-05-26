@@ -1,9 +1,5 @@
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.net.ConnectException;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 public class Node {
@@ -12,10 +8,15 @@ public class Node {
 		System.out.println("I am a Node");
 		while (true) {
 			try {
+				// Establish a connection to the miner
 				Socket clientSocket = new Socket("miner1", 8000);
-				OutputStream output = clientSocket.getOutputStream();
-				PrintWriter writer = new PrintWriter(output, true);
-				writer.println("This is a message from the node");
+				
+				// Create a transaction, serialize it, and send it
+				ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+				Transaction toSend = new Transaction();				
+				output.writeObject(toSend);
+				
+				// Close the connection
 				clientSocket.close();
 			} catch (Exception e){
 				System.out.println(e);

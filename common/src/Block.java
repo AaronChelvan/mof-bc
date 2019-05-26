@@ -12,4 +12,8 @@ public class Block {
 		prevBlockId = "";
 	}
 	
+	public void addTransaction(Transaction t) {
+		transactionList.add(t);
+	}
+	
 }
