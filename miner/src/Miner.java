@@ -14,8 +14,8 @@ public class Miner {
 		while (true) {
 			Socket connectionSocket = minerSocket.accept();
 			BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-		    String clientSentence = inFromClient.readLine();
-		    System.out.println(clientSentence);
+			String clientSentence = inFromClient.readLine();
+			System.out.println(clientSentence);
 		}
 	}
 
