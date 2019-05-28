@@ -13,7 +13,7 @@ public class Node {
 				
 				// Create a transaction, serialize it, and send it
 				ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
-				Transaction toSend = new Transaction();				
+				Transaction toSend = new Transaction();
 				output.writeObject(toSend);
 				
 				// Close the connection
@@ -28,9 +28,6 @@ public class Node {
 				System.out.println(e);
 			}
 		}
-		
-		
-		
 	}
 	
 }
