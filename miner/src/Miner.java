@@ -2,12 +2,19 @@ import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import org.iq80.leveldb.*;
+import static org.fusesource.leveldbjni.JniDBFactory.*;
+import java.io.*;
 
 public class Miner {
 
 	public static void main(String[] args) throws Exception {
 		System.out.println("I am a Miner");
 		int maxBlockchainSize = 100;
+		
+		// LevelDB setup
+		Options options = new Options();
+		options.createIfMissing(true);
 		
 		ArrayList<Block> blockchain = new ArrayList<Block>();
 		Block currentBlock = new Block();
@@ -36,7 +43,10 @@ public class Miner {
 				prevBlockId = currentBlock.getBlockId();
 				
 				// Add the block to the blockchain
-				blockchain.add(currentBlock);
+				DB db = factory.open(new File("blockchain"), options);
+				//TODO - blockchain.add(currentBlock);
+				db.close();
+				
 				
 				// Stop running once a certain amount of blocks have been added to the blockchain
 				if (blockchain.size() >= maxBlockchainSize) {
