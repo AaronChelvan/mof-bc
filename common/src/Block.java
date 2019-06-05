@@ -27,6 +27,7 @@ public class Block {
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}
+		md.update(prevBlockId.getBytes());
 		for (Transaction t: transactionList) {
 			md.update(t.getTid().getBytes());
 			md.update(t.getPrevTid().getBytes());
