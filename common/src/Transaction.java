@@ -15,17 +15,17 @@ public class Transaction implements Serializable {
 	private String input;
 	private String output;
 	private String signature;
-	private String pubKey;
+	private byte[] pubKey;
 	
-	public Transaction() {
-		data = UUID.randomUUID().toString(); // Generate a random string
+	public Transaction(String data, byte[] pubKey) {
+		this.data = data;
 		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
 		tid = "";
 		prevTid = "";
 		input = "";
 		output = "";
 		signature = "";
-		pubKey = "";
+		this.pubKey = pubKey;
 	}
 	
 	public String getData() {
@@ -50,7 +50,7 @@ public class Transaction implements Serializable {
 		md.update(input.getBytes());
 		md.update(output.getBytes());
 		md.update(signature.getBytes());
-		md.update(pubKey.getBytes());
+		md.update(pubKey);
 		tid = new String(md.digest());
 	}
 	

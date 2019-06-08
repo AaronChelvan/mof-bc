@@ -4,6 +4,10 @@ services:
     build:
       context: .
       dockerfile: node/Dockerfile
+  node2:
+    build:
+      context: .
+      dockerfile: node/Dockerfile
   miner1:
     build:
       context: .
