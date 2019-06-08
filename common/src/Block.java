@@ -1,8 +1,11 @@
+import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
-public class Block {
+public class Block implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 	private static final int maxNumTransactions = 1500; // Maximum number of transactions in a block
 	private ArrayList<Transaction> transactionList;
 	private String blockId;

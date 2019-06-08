@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 public class Node {
 	
 	public static void main(String[] args) {
-		System.out.println("I am a Node");
+		System.out.println("Node is running");
 		while (true) {
 			try {
 				// Establish a connection to the miner
@@ -20,14 +20,13 @@ public class Node {
 				clientSocket.close();
 			} catch (Exception e){
 				System.out.println(e);
-			}
-			
-			try {
-				TimeUnit.SECONDS.sleep(3);
-			} catch (InterruptedException e) {
-				System.out.println(e);
+				try {
+					TimeUnit.SECONDS.sleep(1);
+				} catch (InterruptedException timeError) {
+					System.out.println(timeError);
+				}
 			}
 		}
 	}
-	
+
 }
