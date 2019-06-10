@@ -15,9 +15,9 @@ public class Transaction implements Serializable {
 	private String input;
 	private String output;
 	private String signature;
-	private byte[] pubKey;
+	private String pubKey;
 	
-	public Transaction(String data, byte[] pubKey) {
+	public Transaction(String data, String pubKey) {
 		this.data = data;
 		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
 		tid = "";
@@ -50,7 +50,7 @@ public class Transaction implements Serializable {
 		md.update(input.getBytes());
 		md.update(output.getBytes());
 		md.update(signature.getBytes());
-		md.update(pubKey);
+		md.update(pubKey.getBytes());
 		tid = new String(md.digest());
 	}
 	
@@ -60,5 +60,9 @@ public class Transaction implements Serializable {
 	
 	public void setPrevTid(String prevTid) {
 		this.prevTid = prevTid;
+	}
+	
+	public String getPubKey() {
+		return pubKey;
 	}
 }

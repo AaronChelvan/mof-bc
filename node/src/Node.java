@@ -20,6 +20,10 @@ public class Node {
 		Key publicKey = kp.getPublic();
 		Key privateKey = kp.getPrivate();
 
+		// Convert the keys to strings
+		String publicKeyStr = Base64.getEncoder().encodeToString(publicKey.getEncoded());
+		String privateKeyStr = Base64.getEncoder().encodeToString(privateKey.getEncoded());
+
 		while (true) {
 			try {
 				// Establish a connection to the miner
@@ -28,7 +32,7 @@ public class Node {
 				// Create a transaction, serialize it, and send it
 				ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
 				String transactionData = UUID.randomUUID().toString(); // Generate a random string
-				Transaction toSend = new Transaction(transactionData, publicKey.getEncoded());
+				Transaction toSend = new Transaction(transactionData, publicKeyStr);
 				output.writeObject(toSend);
 				
 				// Close the connection
