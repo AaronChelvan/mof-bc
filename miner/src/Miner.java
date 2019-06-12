@@ -16,6 +16,7 @@ public class Miner {
 		// LevelDB setup
 		Options options = new Options();
 		options.createIfMissing(true);
+		DB db = factory.open(new File("blockchain"), options);
 		
 		ArrayList<Block> blockchain = new ArrayList<Block>();
 		Block currentBlock = new Block();
@@ -46,9 +47,7 @@ public class Miner {
 				currentBlockId = currentBlock.getBlockId();
 				
 				// Add the block to the blockchain
-				DB db = factory.open(new File("blockchain"), options);
 				db.put(bytes(currentBlockId), Util.blockToBytes(currentBlock));
-				db.close();
 				
 				// Stop running once a certain amount of blocks have been added to the blockchain
 				if (blockchain.size() >= maxBlockchainSize) {

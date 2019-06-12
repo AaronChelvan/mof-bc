@@ -53,5 +53,9 @@ public class Block implements Serializable {
 	public void addTransaction(Transaction t) {
 		transactionList.add(t);
 	}
+	
+	public ArrayList<Transaction> getTransactions() {
+		return transactionList;
+	}
 
 }
