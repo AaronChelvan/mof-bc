@@ -32,7 +32,7 @@ public class Node {
 				// Create a transaction, serialize it, and send it
 				ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
 				String transactionData = UUID.randomUUID().toString(); // Generate a random string
-				Transaction toSend = new Transaction(transactionData, publicKeyStr);
+				Transaction toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
 				output.writeObject(toSend);
 				
 				// Close the connection

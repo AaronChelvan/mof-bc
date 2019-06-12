@@ -3,11 +3,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.UUID;
 
 public class Transaction implements Serializable {
 
 	private static final long serialVersionUID = 1L;
+	private TransactionType type;
 	private String data;
 	private String timestamp; // Timestamp of creation
 	private String tid; // Transaction ID
@@ -17,7 +17,8 @@ public class Transaction implements Serializable {
 	private String signature;
 	private String pubKey;
 	
-	public Transaction(String data, String pubKey) {
+	public Transaction(String data, String pubKey, TransactionType type) {
+		this.type = type;
 		this.data = data;
 		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
 		tid = "";
@@ -44,6 +45,7 @@ public class Transaction implements Serializable {
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}
+		md.update(type.name().getBytes());
 		md.update(data.getBytes());
 		md.update(timestamp.getBytes());
 		md.update(prevTid.getBytes());
@@ -64,5 +66,9 @@ public class Transaction implements Serializable {
 	
 	public String getPubKey() {
 		return pubKey;
+	}
+	
+	public TransactionType getType() {
+		return type;
 	}
 }
