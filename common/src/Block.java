@@ -23,7 +23,6 @@ public class Block implements Serializable {
 
 	public void setBlockId() {
 		// Compute a hash from all transaction IDs and prev transaction IDs in this block
-		// TODO - compute the blockID using a Merkle tree
 		MessageDigest md = null;
 		try {
 			md = MessageDigest.getInstance("SHA-256");
@@ -34,7 +33,7 @@ public class Block implements Serializable {
 		for (Transaction t: transactionList) {
 			md.update(t.getTid().getBytes());
 			md.update(t.getPrevTid().getBytes());
-		} 
+		}
 		
 		blockId = new String(md.digest());;
 	}

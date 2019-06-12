@@ -8,15 +8,6 @@ import static org.fusesource.leveldbjni.JniDBFactory.*;
 import java.io.*;
 
 public class Miner {
-	// Convert a Block object into a byte[] for storage in the DB
-	// https://stackoverflow.com/a/30968827
-	private static byte[] convertToBytes(Block b) throws IOException {
-		try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			ObjectOutput out = new ObjectOutputStream(bos)) {
-			out.writeObject(b);
-			return bos.toByteArray();
-		}
-	}
 
 	public static void main(String[] args) throws Exception {
 		System.out.println("Miner is running");
@@ -56,7 +47,7 @@ public class Miner {
 				
 				// Add the block to the blockchain
 				DB db = factory.open(new File("blockchain"), options);
-				db.put(bytes(currentBlockId), convertToBytes(currentBlock));
+				db.put(bytes(currentBlockId), Util.blockToBytes(currentBlock));
 				db.close();
 				
 				// Stop running once a certain amount of blocks have been added to the blockchain
