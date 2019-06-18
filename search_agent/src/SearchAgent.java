@@ -7,6 +7,9 @@ import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
@@ -21,8 +24,25 @@ public class SearchAgent {
 		options.createIfMissing(true);
 		db = factory.open(new File("blockchain"), options);
 		
+		// Socket setup
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
+		// Cleaning period setup
+		int cleaningPeriod = 5; // (Seconds)
+		Runnable blockchainScan = new Runnable() {
+			public void run() {
+				try {
+					searchBlockchain();
+				} catch (ClassNotFoundException | IOException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+		executor.scheduleAtFixedRate(blockchainScan, 0, cleaningPeriod, TimeUnit.SECONDS);
+		
+		System.out.println("Setup complete");
+		// Listen for incoming connections
 		while (true) {
 			// Receive Block objects from the miner
 			Socket connectionSocket = agentSocket.accept();
@@ -34,10 +54,11 @@ public class SearchAgent {
 		}
 	}
 	
-	// TODO - execute this function once every cleaning period
 	// TODO - How to keep track of Remove and Summary transactions that have already
 	// been found in previous cleaning periods?
-	private void searchBlockchain() throws ClassNotFoundException, IOException {
+	// This function gets executed at regular intervals
+	private static void searchBlockchain() throws ClassNotFoundException, IOException {
+		System.out.println("Searching the blockchain");
 		ArrayList<TransactionLocation> foundRemoveTransactions = new ArrayList<TransactionLocation>();
 		ArrayList<TransactionLocation> foundSummaryTransactions = new ArrayList<TransactionLocation>();
 		
