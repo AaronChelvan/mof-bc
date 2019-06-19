@@ -1,3 +1,7 @@
+import static org.fusesource.leveldbjni.JniDBFactory.factory;
+
+import java.io.File;
+import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.security.Key;
@@ -8,10 +12,18 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.iq80.leveldb.DB;
+import org.iq80.leveldb.Options;
+
 public class Node {
 	
-	public static void main(String[] args) throws NoSuchAlgorithmException {
+	public static void main(String[] args) throws NoSuchAlgorithmException, IOException {
 		System.out.println("Node is running");
+		
+		// LevelDB setup
+		Options options = new Options();
+		options.createIfMissing(true);
+		DB db = factory.open(new File("blockchain"), options);
 
 		// Generate an RSA key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
