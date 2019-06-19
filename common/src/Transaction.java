@@ -65,4 +65,11 @@ public class Transaction implements Serializable {
 	public TransactionType getType() {
 		return type;
 	}
+
+	public void clearTransaction() {
+		this.type = null;
+		this.timestamp = null;
+		this.signature = null;
+		this.pubKey = null;
+	}
 }
