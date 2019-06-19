@@ -12,19 +12,19 @@ public class Util {
 	
 	// Convert a Block object into a byte[] for storage in the DB
 	// https://stackoverflow.com/a/3736247
-	public static byte[] blockToBytes(Block b) throws IOException {
+	public static <E> byte[] serialize(E e) throws IOException {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		ObjectOutput out = new ObjectOutputStream(bos);
-		out.writeObject(b);
+		out.writeObject(e);
 		return bos.toByteArray();
 	}
 	
 	// Convert a byte[] to a Block object
-	public static Block bytesToBlock(byte[] data) throws IOException, ClassNotFoundException {
+	public static <E> E deserialize(byte[] data) throws IOException, ClassNotFoundException {
 		ByteArrayInputStream bis = new ByteArrayInputStream(data);
 		ObjectInputStream in = new ObjectInputStream(bis);
-		return (Block) in.readObject();
-	}
+		return (E) in.readObject();
+	}	
 	
 	// Given a socket, return the name of the client connected to that socket
 	public static String socketClientName(Socket s) throws UnknownHostException {
@@ -43,7 +43,7 @@ public class Util {
 			return "node1";
 		} else if (clientIP.equals(node2IP)) {
 			return "node2";
-		} else if (clientIP.equals(miner1IP)){
+		} else if (clientIP.equals(miner1IP)) {
 			return "miner1";
 		} else {
 			return "";
