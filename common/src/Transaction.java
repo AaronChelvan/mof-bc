@@ -12,8 +12,6 @@ public class Transaction implements Serializable {
 	private String timestamp; // Timestamp of creation
 	private String tid; // Transaction ID
 	private String prevTid; // Previous transaction ID
-	private String input;
-	private String output;
 	private String signature;
 	private String pubKey;
 	
@@ -23,8 +21,6 @@ public class Transaction implements Serializable {
 		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
 		tid = "";
 		prevTid = "";
-		input = "";
-		output = "";
 		signature = "";
 		this.pubKey = pubKey;
 	}
@@ -49,8 +45,6 @@ public class Transaction implements Serializable {
 		md.update(data.getBytes());
 		md.update(timestamp.getBytes());
 		md.update(prevTid.getBytes());
-		md.update(input.getBytes());
-		md.update(output.getBytes());
 		md.update(signature.getBytes());
 		md.update(pubKey.getBytes());
 		tid = new String(md.digest());
