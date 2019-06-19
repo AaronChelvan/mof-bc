@@ -28,7 +28,7 @@ public class SearchAgent {
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
 		// Cleaning period setup
-		int cleaningPeriod = 5; // (Seconds)
+		int cleaningPeriod = 30; // (Seconds)
 		Runnable blockchainScan = new Runnable() {
 			public void run() {
 				try {
@@ -42,43 +42,54 @@ public class SearchAgent {
 		executor.scheduleAtFixedRate(blockchainScan, 0, cleaningPeriod, TimeUnit.SECONDS);
 		
 		System.out.println("Setup complete");
+		
 		// Listen for incoming connections
 		while (true) {
-			// Receive Block objects from the miner
+			// Receive Blocks from the miner or one of the agents
 			Socket connectionSocket = agentSocket.accept();
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			Block currentBlock = (Block) in.readObject();
 			
+			if (Util.socketClientName(connectionSocket).equals("miner1")) {
+				// Scan the block for remove transactions & summary transactions
+				for (Transaction t: currentBlock.getTransactions()) {
+					if (t.getType() == TransactionType.Remove) {
+						// Extract the location of the transaction to be removed
+						TransactionLocation tl = Util.deserialize(bytes(t.getData()));
+						
+						// Get the block containing the transaction
+						Block b = Util.deserialize(db.get(bytes(tl.getBlockID())));
+						
+						// Find the transaction to be removed
+						for (Transaction t2: b.getTransactions()) {
+							if (t2.getTid().equals(tl.getTransactionID())) {
+								// Delete everything in this transaction except for the transaction ID and previous transaction ID
+								t2.clearTransaction();
+								break;
+							}
+						} 
+						
+						// Put the updated block back in the database
+						db.put(bytes(b.getBlockId()), Util.serialize(b));
+						
+					} else if (t.getType() == TransactionType.Summary) {
+						// TODO
+						
+					}
+				}
+			} else {
+				//TODO - if the client is an agent, then this is an updated block
+				//Check that this block already exists in the blockchain
+				System.out.println("Something went wrong");
+			}
+			
 			// Add the block to the blockchain
-			db.put(bytes(currentBlock.getBlockId()), Util.blockToBytes(currentBlock));			
+			db.put(bytes(currentBlock.getBlockId()), Util.serialize(currentBlock));
 		}
 	}
 	
-	// TODO - How to keep track of Remove and Summary transactions that have already
-	// been found in previous cleaning periods?
-	// This function gets executed at regular intervals
-	private static void searchBlockchain() throws ClassNotFoundException, IOException {
-		System.out.println("Searching the blockchain");
-		ArrayList<TransactionLocation> foundRemoveTransactions = new ArrayList<TransactionLocation>();
-		ArrayList<TransactionLocation> foundSummaryTransactions = new ArrayList<TransactionLocation>();
+	private void transmitUpdatedBlock(Block b) {
 		
-		// Traverse the blockchain and look for Remove and Summary transactions
-		DBIterator iterator = db.iterator();
-		for (iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
-			String blockHash = new String(iterator.peekNext().getKey());
-			Block blockContents = Util.bytesToBlock(iterator.peekNext().getValue());
-			
-			for (Transaction t: blockContents.getTransactions()) {
-				if (t.getType() == TransactionType.Remove) {
-					foundRemoveTransactions.add(new TransactionLocation(blockHash, t.getTid()));
-				} else if (t.getType() == TransactionType.Summary) {
-					foundSummaryTransactions.add(new TransactionLocation(blockHash, t.getTid()));
-				}
-			}
-		}
-		
-		// TODO - send foundRemoveTransactions to the Service Agent
-		// TODO - send foundSummaryTransactions to the Summary Manager Agent
 	}
 
 }
