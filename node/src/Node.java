@@ -1,23 +1,31 @@
+import static org.fusesource.leveldbjni.JniDBFactory.bytes;
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.Options;
 
 public class Node {
+	private static Socket clientSocket;
+	private static ObjectOutputStream output;
 	
-	public static void main(String[] args) throws NoSuchAlgorithmException, IOException {
+	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
 		System.out.println("Node is running");
 		
 		// LevelDB setup
@@ -36,28 +44,41 @@ public class Node {
 		String publicKeyStr = Base64.getEncoder().encodeToString(publicKey.getEncoded());
 		String privateKeyStr = Base64.getEncoder().encodeToString(privateKey.getEncoded());
 
-		while (true) {
-			try {
-				// Establish a connection to the miner
-				Socket clientSocket = new Socket("miner1", 8000);
-				
-				// Create a transaction, serialize it, and send it
-				ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
-				String transactionData = UUID.randomUUID().toString(); // Generate a random string
-				Transaction toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
-				output.writeObject(toSend);
-				
-				// Close the connection
-				clientSocket.close();
-			} catch (Exception e){
-				System.out.println(e);
+		// Establish a connection to the miner
+		clientSocket = new Socket("miner1", 8000);
+		output = new ObjectOutputStream(clientSocket.getOutputStream());
+		
+		// Thread for sending transactions
+		Runnable blockchainScan = new Runnable() {
+			public void run() {
 				try {
-					TimeUnit.SECONDS.sleep(1);
-				} catch (InterruptedException timeError) {
-					System.out.println(timeError);
+					sendTransaction(publicKeyStr);
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
+		};
+		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+		executor.scheduleAtFixedRate(blockchainScan, 0, 1, TimeUnit.MILLISECONDS);
+				
+		// Socket setup
+		ServerSocket nodeSocket = new ServerSocket(8000);
+		
+		// Listen for blocks from the miner
+		while (true) {
+			Socket connectionSocket = nodeSocket.accept();
+			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
+			Block b = (Block) in.readObject();
+			db.put(bytes(b.getBlockId()), Util.serialize(b));
 		}
+		
+	}
+	
+	private static void sendTransaction(String publicKeyStr) throws IOException {
+		// Create a transaction and send it
+		String transactionData = UUID.randomUUID().toString(); // Generate a random string
+		Transaction toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
+		output.writeObject(toSend);
 	}
 
 }
