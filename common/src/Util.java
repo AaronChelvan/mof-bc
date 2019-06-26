@@ -36,6 +36,7 @@ public class Util {
 		nodeIPs.add(InetAddress.getByName("node2").getHostAddress());
 		String miner1IP = InetAddress.getByName("miner1").getHostAddress();
 		String searchAgent1IP = InetAddress.getByName("search_agent1").getHostAddress();
+		String serviceAgentIP = InetAddress.getByName("service_agent").getHostAddress();
 		
 		// Get the IP address of the client
 		String clientIP = s.getRemoteSocketAddress().toString();
@@ -48,6 +49,8 @@ public class Util {
 			return "miner";
 		} else if (clientIP.equals(searchAgent1IP)){
 			return "search agent";
+		} else if (clientIP.equals(serviceAgentIP)){
+			return "service agent";
 		} else {
 			return "";
 		}
@@ -64,7 +67,7 @@ public class Util {
 				connected = true;
 			} catch (Exception e) {
 				// If connection was unsuccessful, wait 1 second and try again
-				//System.out.println(e);
+				System.out.println(e);
 				try {
 					TimeUnit.SECONDS.sleep(1);
 				} catch (InterruptedException e1) {

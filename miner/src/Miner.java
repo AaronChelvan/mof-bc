@@ -48,7 +48,7 @@ public class Miner {
 			if (Util.socketClientName(connectionSocket).equals("node")) { // Received a transaction
 				//System.out.println("Node connected to miner");
 				processTransaction(in);
-			} else if (Util.socketClientName(connectionSocket).equals("search agent")) { // Received an updated block
+			} else if (Util.socketClientName(connectionSocket).equals("service agent")) { // Received an updated block
 				System.out.println("Search agent connected to miner");
 				updateBlockchain(in);
 			}
@@ -81,7 +81,7 @@ public class Miner {
 			numBlocks++;
 			
 			// Transmit the block to all nodes and agents
-			List<String> blockRecipients = Arrays.asList("node1", "node2", "search_agent1");
+			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "node2", "search_agent1");
 			transmitBlock(currentBlock, blockRecipients);
 			
 			// Checks if a key does not exist

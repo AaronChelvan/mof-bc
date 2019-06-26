@@ -16,4 +16,7 @@ services:
     build:
       context: .
       dockerfile: search_agent/Dockerfile
-
+  service_agent:
+    build:
+      context: .
+      dockerfile: service_agent/Dockerfile

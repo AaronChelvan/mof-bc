@@ -32,22 +32,6 @@ public class SearchAgent {
 		// Socket setup
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
-		// Cleaning period setup
-		int cleaningPeriod = 10; // (Seconds)
-		Runnable blockchainScan = new Runnable() {
-			public void run() {
-				try {
-					transmitUpdatedBlocks();
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		};
-		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(blockchainScan, cleaningPeriod, cleaningPeriod, TimeUnit.SECONDS);
-		
 		// A list of blocks that have been updated over the last cleaning period
 		updatedBlocks = new HashMap<String, Block>(); // Key = block ID. Val = block.
 		
@@ -74,23 +58,11 @@ public class SearchAgent {
 					// Extract the location of the transaction to be removed
 					TransactionLocation tl = Util.deserialize(bytes(t.getData()));
 					
-					// If the block to be updated is not already in updatedBlocks list,
-					// get it from the database
-					Block b;
-					if (!updatedBlocks.containsKey(tl.getBlockID())) {
-						b = Util.deserialize(db.get(bytes(tl.getBlockID())));
-					} else {
-						b = updatedBlocks.get(tl.getBlockID());
-					}
+					// Send the location to the service agent
+					// TODO
 					
-					// Find the transaction to be removed
-					for (Transaction t2: b.getTransactions()) {
-						if (t2.getTid().equals(tl.getTransactionID())) {
-							// Delete everything in this transaction except for the transaction ID and previous transaction ID
-							t2.clearTransaction();
-							break;
-						}
-					}
+					
+					
 					
 				} else if (t.getType() == TransactionType.Summary) {
 					// TODO
@@ -104,25 +76,6 @@ public class SearchAgent {
 		}
 	}
 	
-	private static void transmitUpdatedBlocks() throws UnknownHostException, IOException {
-		// Establish a connection to the miner
-		Socket clientSocket = Util.connectToServerSocket("miner1", 8000);
-		ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
-		
-		// Transmit the updated blocks to the miner
-		output.writeObject(updatedBlocks);
-		
-		// Close the connection
-		clientSocket.close();
-		System.out.println("Transmitted updated blocks");
-		
-		// Write the updated blocks to the database
-		for (Block b : updatedBlocks.values()) {
-			db.put(bytes(b.getBlockId()), Util.serialize(b));
-		}
-		
-		// Clear the list of updated blocks
-		updatedBlocks.clear();
-	}
+	
 
 }
