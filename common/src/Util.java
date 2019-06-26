@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 public class Util {
 	
@@ -51,5 +52,29 @@ public class Util {
 			return "";
 		}
 	}
+	
+	// Given the IP address and port number of a server,
+	// return a client socket that is connected to the server
+	public static Socket connectToServerSocket(String ip, int port) {
+		Socket clientSocket = null;
+		boolean connected = false;
+		while (!connected) {
+			try {
+				clientSocket = new Socket(ip, port);
+				connected = true;
+			} catch (Exception e) {
+				// If connection was unsuccessful, wait 1 second and try again
+				//System.out.println(e);
+				try {
+					TimeUnit.SECONDS.sleep(1);
+				} catch (InterruptedException e1) {
+					System.out.println(e1);
+				}
+			}
+		}
+		
+		return clientSocket;
+	}
+	
 
 }
