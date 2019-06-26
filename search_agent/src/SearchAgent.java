@@ -22,7 +22,7 @@ import org.iq80.leveldb.Options;
 public class SearchAgent {
 	private static DB db; // LevelDB database used for storing the blockchain
 	private static HashMap<String, Block> updatedBlocks; // Key = block ID. Val = block.
-
+	
 	public static void main(String[] args) throws IOException, ClassNotFoundException {
 		// LevelDB setup
 		Options options = new Options();
@@ -33,7 +33,7 @@ public class SearchAgent {
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
 		// Cleaning period setup
-		int cleaningPeriod = 30; // (Seconds)
+		int cleaningPeriod = 10; // (Seconds)
 		Runnable blockchainScan = new Runnable() {
 			public void run() {
 				try {
@@ -46,7 +46,7 @@ public class SearchAgent {
 			}
 		};
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(blockchainScan, 0, cleaningPeriod, TimeUnit.SECONDS);
+		executor.scheduleAtFixedRate(blockchainScan, cleaningPeriod, cleaningPeriod, TimeUnit.SECONDS);
 		
 		// A list of blocks that have been updated over the last cleaning period
 		updatedBlocks = new HashMap<String, Block>(); // Key = block ID. Val = block.
@@ -60,13 +60,17 @@ public class SearchAgent {
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			Block currentBlock = (Block) in.readObject();
 			
-			if (!Util.socketClientName(connectionSocket).equals("miner1")) {
+			if (!Util.socketClientName(connectionSocket).equals("miner")) {
 				System.out.println("Something went wrong!");
+				System.exit(0);
 			}
 			
 			// Scan the block for remove transactions & summary transactions
 			for (Transaction t: currentBlock.getTransactions()) {
 				if (t.getType() == TransactionType.Remove) {
+					// TODO - Verify if the creator of this transaction is the same node
+					// that created the transaction that is to be removed
+					
 					// Extract the location of the transaction to be removed
 					TransactionLocation tl = Util.deserialize(bytes(t.getData()));
 					
@@ -102,23 +106,23 @@ public class SearchAgent {
 	
 	private static void transmitUpdatedBlocks() throws UnknownHostException, IOException {
 		// Establish a connection to the miner
-		Socket clientSocket = new Socket("miner1", 8000);
+		Socket clientSocket = Util.connectToServerSocket("miner1", 8000);
 		ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
 		
-		for (Block b : updatedBlocks.values()) {
-			// Transmit the updated blocks to the miner
-			output.writeObject(b);
-			
-			// Write the updated blocks to the database
-			db.put(bytes(b.getBlockId()), Util.serialize(b));
-		}
-		System.out.println("Transmitted updated blocks");
-		
-		// Clear the list of updated blocks
-		updatedBlocks.clear();
+		// Transmit the updated blocks to the miner
+		output.writeObject(updatedBlocks);
 		
 		// Close the connection
 		clientSocket.close();
+		System.out.println("Transmitted updated blocks");
+		
+		// Write the updated blocks to the database
+		for (Block b : updatedBlocks.values()) {
+			db.put(bytes(b.getBlockId()), Util.serialize(b));
+		}
+		
+		// Clear the list of updated blocks
+		updatedBlocks.clear();
 	}
 
 }

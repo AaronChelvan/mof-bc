@@ -44,10 +44,6 @@ public class Node {
 		String publicKeyStr = Base64.getEncoder().encodeToString(publicKey.getEncoded());
 		String privateKeyStr = Base64.getEncoder().encodeToString(privateKey.getEncoded());
 
-		// Establish a connection to the miner
-		clientSocket = new Socket("miner1", 8000);
-		output = new ObjectOutputStream(clientSocket.getOutputStream());
-		
 		// Thread for sending transactions
 		Runnable blockchainScan = new Runnable() {
 			public void run() {
@@ -70,15 +66,22 @@ public class Node {
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			Block b = (Block) in.readObject();
 			db.put(bytes(b.getBlockId()), Util.serialize(b));
+			System.out.println("Received block from the miner");
 		}
 		
 	}
 	
 	private static void sendTransaction(String publicKeyStr) throws IOException {
+		// Establish a connection to the miner
+		clientSocket = Util.connectToServerSocket("miner1", 8000);
+		output = new ObjectOutputStream(clientSocket.getOutputStream());
+		
 		// Create a transaction and send it
 		String transactionData = UUID.randomUUID().toString(); // Generate a random string
 		Transaction toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
 		output.writeObject(toSend);
+		//System.out.println("Sent transaction");
+		clientSocket.close();
 	}
 
 }

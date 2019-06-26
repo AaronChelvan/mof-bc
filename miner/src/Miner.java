@@ -3,6 +3,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,8 +46,10 @@ public class Miner {
 			
 			// Identify who connected to the socket
 			if (Util.socketClientName(connectionSocket).equals("node")) { // Received a transaction
+				//System.out.println("Node connected to miner");
 				processTransaction(in);
 			} else if (Util.socketClientName(connectionSocket).equals("search agent")) { // Received an updated block
+				System.out.println("Search agent connected to miner");
 				updateBlockchain(in);
 			}
 		}
@@ -54,6 +57,7 @@ public class Miner {
 	
 	// Handles when a transaction is received from a node
 	private static void processTransaction(ObjectInputStream in) throws DBException, IOException, ClassNotFoundException {
+		//System.out.println("processing transaction");
 		Transaction t = (Transaction) in.readObject();
 		
 		// Set the prevTid and tid fields in the transaction
@@ -63,6 +67,7 @@ public class Miner {
 		
 		// Add the transaction to the block
 		currentBlock.addTransaction(t);
+		
 		if (currentBlock.isFull()) {
 			System.out.println("Block filled");
 			
@@ -100,21 +105,25 @@ public class Miner {
 	
 	// Handles when an updated block (contains transactions that have been removed or summarised)
 	// is received from an agent
-	private static void updateBlockchain(ObjectInputStream in) throws ClassNotFoundException, IOException {
-		Block b = (Block) in.readObject();
-		db.put(bytes(b.getBlockId()), Util.serialize(b));
+	private static void updateBlockchain(ObjectInputStream in) throws ClassNotFoundException, IOException{
+		HashMap<String, Block> updatedBlocks = (HashMap<String, Block>) in.readObject();
+		for (String blockId: updatedBlocks.keySet()) {
+			db.put(bytes(blockId), Util.serialize(updatedBlocks.get(blockId)));
+			
+			// TODO - transmit this updated block to the nodes and agents
+			// (except for the agent that sent this updated block to the miner)
+			List<String> recipients = Arrays.asList("node1", "node2");
+			transmitBlock(updatedBlocks.get(blockId), recipients);
+		}
 		
-		// TODO - transmit this updated block to the nodes and agents
-		// (except for the agent that sent this updated block to the miner)
-		List<String> recipients = Arrays.asList("node1", "node2");
-		transmitBlock(b, recipients);
+		System.out.println("Miner transmitted updated blocks");
 	}
 	
 	// Given a block and a list of recipients, transmit the block to all recipients
 	private static void transmitBlock(Block currentBlock, List<String> recipients) throws UnknownHostException, IOException {
 		for (String s: recipients) {
 			// Open a connection
-			Socket clientSocket = new Socket(s, 8000);
+			Socket clientSocket = Util.connectToServerSocket(s, 8000);
 			
 			// Transmit the block
 			ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
