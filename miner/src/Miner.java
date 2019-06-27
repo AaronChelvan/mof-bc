@@ -42,21 +42,22 @@ public class Miner {
 		
 		while (true) {
 			Socket connectionSocket = minerSocket.accept();
-			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			
 			// Identify who connected to the socket
 			if (Util.socketClientName(connectionSocket).equals("node")) { // Received a transaction
 				//System.out.println("Node connected to miner");
-				processTransaction(in);
-			} else if (Util.socketClientName(connectionSocket).equals("service agent")) { // Received an updated block
-				System.out.println("Search agent connected to miner");
-				updateBlockchain(in);
+				processTransaction(connectionSocket);
+			} else if (Util.socketClientName(connectionSocket).equals("service_agent")) { // Received an updated block
+				System.out.println("Service agent connected to miner");
+				updateBlockchain(connectionSocket);
 			}
 		}
 	}
 	
 	// Handles when a transaction is received from a node
-	private static void processTransaction(ObjectInputStream in) throws DBException, IOException, ClassNotFoundException {
+	private static void processTransaction(Socket connectionSocket) throws DBException, IOException, ClassNotFoundException {
+		ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
+		
 		//System.out.println("processing transaction");
 		Transaction t = (Transaction) in.readObject();
 		
@@ -81,7 +82,7 @@ public class Miner {
 			numBlocks++;
 			
 			// Transmit the block to all nodes and agents
-			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "node2", "search_agent1");
+			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "node2", "search_agent");
 			transmitBlock(currentBlock, blockRecipients);
 			
 			// Checks if a key does not exist
@@ -105,14 +106,18 @@ public class Miner {
 	
 	// Handles when an updated block (contains transactions that have been removed or summarised)
 	// is received from an agent
-	private static void updateBlockchain(ObjectInputStream in) throws ClassNotFoundException, IOException{
+	private static void updateBlockchain(Socket connectionSocket) throws ClassNotFoundException, IOException{
+		ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
+		
 		HashMap<String, Block> updatedBlocks = (HashMap<String, Block>) in.readObject();
 		for (String blockId: updatedBlocks.keySet()) {
 			db.put(bytes(blockId), Util.serialize(updatedBlocks.get(blockId)));
 			
-			// TODO - transmit this updated block to the nodes and agents
+			// Transmit this updated block to the nodes and agents
 			// (except for the agent that sent this updated block to the miner)
-			List<String> recipients = Arrays.asList("node1", "node2");
+			List<String> recipients = Arrays.asList("service_agent", "node1", "node2", "search_agent");
+			recipients.remove(Util.socketClientName(connectionSocket));
+			
 			transmitBlock(updatedBlocks.get(blockId), recipients);
 		}
 		

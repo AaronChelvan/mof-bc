@@ -8,11 +8,11 @@ services:
     build:
       context: .
       dockerfile: node/Dockerfile
-  miner1:
+  miner:
     build:
       context: .
       dockerfile: miner/Dockerfile
-  search_agent1:
+  search_agent:
     build:
       context: .
       dockerfile: search_agent/Dockerfile

@@ -73,7 +73,7 @@ public class Node {
 	
 	private static void sendTransaction(String publicKeyStr) throws IOException {
 		// Establish a connection to the miner
-		clientSocket = Util.connectToServerSocket("miner1", 8000);
+		clientSocket = Util.connectToServerSocket("miner", 8000);
 		output = new ObjectOutputStream(clientSocket.getOutputStream());
 		
 		// Create a transaction and send it

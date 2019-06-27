@@ -51,12 +51,13 @@ public class ServiceAgent {
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			
 			// Received a block from the miner
-			if (Util.socketClientName(connectionSocket).equals("miner")) { 
+			if (Util.socketClientName(connectionSocket).equals("miner")) {
+				// Add it to the database
 				Block b = (Block) in.readObject();
 				db.put(bytes(b.getBlockId()), Util.serialize(b));
 			
 			// Received a remove transaction location from the search agent
-			} else if (Util.socketClientName(connectionSocket).equals("search agent")) {
+			} else if (Util.socketClientName(connectionSocket).equals("search_agent")) {
 				TransactionLocation tl = (TransactionLocation) in.readObject();
 				
 				// If the block to be updated is not already in updatedBlocks list,
@@ -76,8 +77,11 @@ public class ServiceAgent {
 						break;
 					}
 				}
+			} else {
+				// Should not get here
+				System.out.println("Received connection from a node that is not a miner or search agent");
+				System.exit(0);
 			}
-			
 		}
 	}
 	
@@ -88,7 +92,7 @@ public class ServiceAgent {
 		}
 		
 		// Establish a connection to the miner
-		Socket clientSocket = Util.connectToServerSocket("miner1", 8000);
+		Socket clientSocket = Util.connectToServerSocket("miner", 8000);
 		ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
 		
 		// Transmit the updated blocks to the miner

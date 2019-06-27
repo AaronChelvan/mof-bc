@@ -34,8 +34,8 @@ public class Util {
 		ArrayList<String> nodeIPs = new ArrayList<String>();
 		nodeIPs.add(InetAddress.getByName("node1").getHostAddress());
 		nodeIPs.add(InetAddress.getByName("node2").getHostAddress());
-		String miner1IP = InetAddress.getByName("miner1").getHostAddress();
-		String searchAgent1IP = InetAddress.getByName("search_agent1").getHostAddress();
+		String minerIP = InetAddress.getByName("miner").getHostAddress();
+		String searchAgentIP = InetAddress.getByName("search_agent").getHostAddress();
 		String serviceAgentIP = InetAddress.getByName("service_agent").getHostAddress();
 		
 		// Get the IP address of the client
@@ -45,12 +45,12 @@ public class Util {
 		
 		if (nodeIPs.contains(clientIP)) {
 			return "node";
-		} else if (clientIP.equals(miner1IP)) {
+		} else if (clientIP.equals(minerIP)) {
 			return "miner";
-		} else if (clientIP.equals(searchAgent1IP)){
-			return "search agent";
+		} else if (clientIP.equals(searchAgentIP)){
+			return "search_agent";
 		} else if (clientIP.equals(serviceAgentIP)){
-			return "service agent";
+			return "service_agent";
 		} else {
 			return "";
 		}

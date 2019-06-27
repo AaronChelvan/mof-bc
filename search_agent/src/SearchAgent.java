@@ -49,30 +49,38 @@ public class SearchAgent {
 				System.exit(0);
 			}
 			
-			// Scan the block for remove transactions & summary transactions
-			for (Transaction t: currentBlock.getTransactions()) {
-				if (t.getType() == TransactionType.Remove) {
-					// TODO - Verify if the creator of this transaction is the same node
-					// that created the transaction that is to be removed
-					
-					// Extract the location of the transaction to be removed
-					TransactionLocation tl = Util.deserialize(bytes(t.getData()));
-					
-					// Send the location to the service agent
-					// TODO
-					
-					
-					
-					
-				} else if (t.getType() == TransactionType.Summary) {
-					// TODO
-					
+			// If this block is already in the database, then it is an updated
+			// block that has had transactions removed or summarised
+			if (db.get(bytes(currentBlock.getBlockId())) != null) {
+				// Scan the block for remove transactions & summary transactions
+				for (Transaction t: currentBlock.getTransactions()) {
+					if (t.getType() == TransactionType.Remove) {
+						// TODO - Verify if the creator of this transaction is the same node
+						// that created the transaction that is to be removed
+						
+						
+						// Extract the location of the transaction to be removed
+						TransactionLocation tl = Util.deserialize(bytes(t.getData()));
+						
+						// Send the location to the service agent
+						// Open a connection
+						Socket clientSocket = Util.connectToServerSocket("service_agent", 8000);
+						
+						// Transmit the block
+						ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+						output.writeObject(tl);
+						
+						// Close the connection
+						clientSocket.close();
+						
+					} else if (t.getType() == TransactionType.Summary) {
+						// TODO			
+					}
 				}
 			}
 			
 			// Add the block to the blockchain
 			db.put(bytes(currentBlock.getBlockId()), Util.serialize(currentBlock));
-			
 		}
 	}
 	
