@@ -19,11 +19,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.iq80.leveldb.DB;
+import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
 public class Node {
+	private static DB db;
 	private static Socket clientSocket;
 	private static ObjectOutputStream output;
+	private static int transactionTypeCounter;
 	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
 		System.out.println("Node is running");
@@ -31,7 +34,7 @@ public class Node {
 		// LevelDB setup
 		Options options = new Options();
 		options.createIfMissing(true);
-		DB db = factory.open(new File("blockchain"), options);
+		db = factory.open(new File("blockchain"), options);
 
 		// Generate an RSA key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -71,17 +74,62 @@ public class Node {
 		
 	}
 	
-	private static void sendTransaction(String publicKeyStr) throws IOException {
+	private static void sendTransaction(String publicKeyStr) throws IOException, ClassNotFoundException {
 		// Establish a connection to the miner
 		clientSocket = Util.connectToServerSocket("miner", 8000);
 		output = new ObjectOutputStream(clientSocket.getOutputStream());
 		
-		// Create a transaction and send it
-		String transactionData = UUID.randomUUID().toString(); // Generate a random string
-		Transaction toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
+		// Create a standard transaction, or a remove transaction
+		Transaction toSend = null;
+		TransactionType nextTransactionType = getNextTransactionType();
+		
+		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
+			String transactionData = UUID.randomUUID().toString(); // Generate a random string
+			toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
+		
+		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
+			// Search the blockchain and pick a transaction to remove
+			DBIterator iterator = db.iterator();
+			boolean found = false; // Have we found a transaction we want to remove?
+			String transactionData = null; // Should contain the transactionLocation of the transaction to be removed
+			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				String blockID = new String(iterator.peekNext().getKey());
+				Block block = Util.deserialize(iterator.peekNext().getValue());
+				
+				for (Transaction t: block.getTransactions()) {
+					if (t.getPubKey().equals(publicKeyStr)) {
+						TransactionLocation tl = new TransactionLocation(blockID, t.getTid());
+						transactionData = new String(Util.serialize(tl));
+						found = true;
+						break;
+					}
+				}
+				if (found == true) break;
+				
+			}
+			toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Remove);
+			iterator.close();
+			
+		} else { // Invalid transaction type
+			System.out.println("Invalid transaction type");
+			System.exit(0);
+		}
+		
 		output.writeObject(toSend);
 		//System.out.println("Sent transaction");
 		clientSocket.close();
+	}
+	
+	// Call this function to determine what type of transaction the node should create next.
+	// Can be modified to increase how often a remove transaction is created, etc.
+	private static TransactionType getNextTransactionType() {
+		if (transactionTypeCounter == 2) {
+			transactionTypeCounter = 0;
+			return TransactionType.Remove;
+		} else {
+			transactionTypeCounter++;
+			return TransactionType.Standard;
+		}
 	}
 
 }
