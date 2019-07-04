@@ -32,7 +32,7 @@ public class ServiceAgent {
 		updatedBlocks = new HashMap<String, Block>(); // Key = block ID. Val = block.
 		
 		// Cleaning period setup
-		int cleaningPeriod = 60; // (Seconds)
+		int cleaningPeriod = 10; // (Seconds)
 		Runnable transmit = new Runnable() {
 			public void run() {
 				try {
@@ -44,6 +44,7 @@ public class ServiceAgent {
 		};
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 		executor.scheduleAtFixedRate(transmit, cleaningPeriod, cleaningPeriod, TimeUnit.SECONDS);
+		System.out.println("Setup complete");
 		
 		// Listen for incoming connections
 		while (true) {
@@ -52,12 +53,14 @@ public class ServiceAgent {
 			
 			// Received a block from the miner
 			if (Util.socketClientName(connectionSocket).equals("miner")) {
+				System.out.println("Received a block from the miner");
 				// Add it to the database
 				Block b = (Block) in.readObject();
 				db.put(bytes(b.getBlockId()), Util.serialize(b));
 			
 			// Received a remove transaction location from the search agent
 			} else if (Util.socketClientName(connectionSocket).equals("search_agent")) {
+				System.out.println("Received a TransactionLocation from the search agent");
 				TransactionLocation tl = (TransactionLocation) in.readObject();
 				
 				// If the block to be updated is not already in updatedBlocks list,

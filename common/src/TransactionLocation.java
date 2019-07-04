@@ -1,6 +1,8 @@
+import java.io.Serializable;
 
-public class TransactionLocation {
-	
+public class TransactionLocation implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 	private String blockID;
 	private String transactionID;
 	

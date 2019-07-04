@@ -52,7 +52,7 @@ public class Node {
 			public void run() {
 				try {
 					sendTransaction(publicKeyStr);
-				} catch (IOException e) {
+				} catch (IOException | ClassNotFoundException e) {
 					e.printStackTrace();
 				}
 			}
@@ -75,9 +75,6 @@ public class Node {
 	}
 	
 	private static void sendTransaction(String publicKeyStr) throws IOException, ClassNotFoundException {
-		// Establish a connection to the miner
-		clientSocket = Util.connectToServerSocket("miner", 8000);
-		output = new ObjectOutputStream(clientSocket.getOutputStream());
 		
 		// Create a standard transaction, or a remove transaction
 		Transaction toSend = null;
@@ -91,23 +88,26 @@ public class Node {
 			// Search the blockchain and pick a transaction to remove
 			DBIterator iterator = db.iterator();
 			boolean found = false; // Have we found a transaction we want to remove?
-			String transactionData = null; // Should contain the transactionLocation of the transaction to be removed
+			TransactionLocation tl = null; // Should contain the transactionLocation of the transaction to be removed
+			
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
 				String blockID = new String(iterator.peekNext().getKey());
 				Block block = Util.deserialize(iterator.peekNext().getValue());
 				
 				for (Transaction t: block.getTransactions()) {
 					if (t.getPubKey().equals(publicKeyStr)) {
-						TransactionLocation tl = new TransactionLocation(blockID, t.getTid());
-						transactionData = new String(Util.serialize(tl));
+						tl = new TransactionLocation(blockID, t.getTid());
 						found = true;
 						break;
 					}
 				}
 				if (found == true) break;
-				
 			}
-			toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Remove);
+			
+			if (found == true) {
+				toSend = new Transaction("", publicKeyStr, TransactionType.Remove);
+				toSend.addLocation(tl);
+			}
 			iterator.close();
 			
 		} else { // Invalid transaction type
@@ -115,9 +115,14 @@ public class Node {
 			System.exit(0);
 		}
 		
-		output.writeObject(toSend);
-		//System.out.println("Sent transaction");
-		clientSocket.close();
+		// Send the transaction to the miner
+		if (toSend != null) {
+			clientSocket = Util.connectToServerSocket("miner", 8000);
+			output = new ObjectOutputStream(clientSocket.getOutputStream());
+			output.writeObject(toSend);
+			clientSocket.close();
+		}
+		
 	}
 	
 	// Call this function to determine what type of transaction the node should create next.

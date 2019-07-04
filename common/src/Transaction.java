@@ -1,7 +1,9 @@
+import java.io.IOException;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 public class Transaction implements Serializable {
@@ -14,6 +16,7 @@ public class Transaction implements Serializable {
 	private String prevTid; // Previous transaction ID
 	private String signature;
 	private String pubKey;
+	private ArrayList<TransactionLocation> locations;
 	
 	public Transaction(String data, String pubKey, TransactionType type) {
 		this.type = type;
@@ -23,6 +26,7 @@ public class Transaction implements Serializable {
 		prevTid = "";
 		signature = "";
 		this.pubKey = pubKey;
+		locations = new ArrayList<TransactionLocation>();
 	}
 	
 	public String getData() {
@@ -34,7 +38,7 @@ public class Transaction implements Serializable {
 	}
 	
 	// Compute the transaction ID by hashing the contents of the transaction
-	public void setTid() {
+	public void setTid() throws IOException {
 		MessageDigest md = null;
 		try {
 			md = MessageDigest.getInstance("SHA-256");
@@ -47,6 +51,7 @@ public class Transaction implements Serializable {
 		md.update(prevTid.getBytes());
 		md.update(signature.getBytes());
 		md.update(pubKey.getBytes());
+		md.update(Util.serialize(locations));
 		tid = new String(md.digest());
 	}
 	
@@ -64,6 +69,18 @@ public class Transaction implements Serializable {
 	
 	public TransactionType getType() {
 		return type;
+	}
+	
+	public void addLocation(TransactionLocation tl) {
+		locations.add(tl);
+	}
+	
+	public TransactionLocation getRemoveLocation() {
+		return locations.get(0);
+	}
+	
+	public ArrayList<TransactionLocation> getSummaryLocations() {
+		return locations;
 	}
 
 	public void clearTransaction() {
