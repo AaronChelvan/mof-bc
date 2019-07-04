@@ -60,9 +60,8 @@ public class ServiceAgent {
 			
 			// Received a remove transaction location from the search agent
 			} else if (Util.socketClientName(connectionSocket).equals("search_agent")) {
-				System.out.println("Received a TransactionLocation from the search agent");
 				TransactionLocation tl = (TransactionLocation) in.readObject();
-				
+				System.out.println("received transaction location from search agent = " + tl);
 				// If the block to be updated is not already in updatedBlocks list,
 				// get it from the database
 				Block b;
@@ -80,6 +79,7 @@ public class ServiceAgent {
 						break;
 					}
 				}
+				updatedBlocks.put(b.getBlockId(), b);
 			} else {
 				// Should not get here
 				System.out.println("Received connection from a node that is not a miner or search agent");

@@ -115,7 +115,11 @@ public class Miner {
 			
 			// Transmit this updated block to the nodes and agents
 			// (except for the agent that sent this updated block to the miner)
-			List<String> recipients = Arrays.asList("service_agent", "node1", "node2", "search_agent");
+			ArrayList<String> recipients = new ArrayList<String>(); 
+			recipients.add("service_agent");
+			recipients.add("node1");
+			recipients.add("node2");
+			recipients.add("search_agent");
 			recipients.remove(Util.socketClientName(connectionSocket));
 			
 			transmitBlock(updatedBlocks.get(blockId), recipients);
