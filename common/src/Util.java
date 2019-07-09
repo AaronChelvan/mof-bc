@@ -33,7 +33,7 @@ public class Util {
 		// IP addresses of the nodes in the network
 		ArrayList<String> nodeIPs = new ArrayList<String>();
 		nodeIPs.add(InetAddress.getByName("node1").getHostAddress());
-		nodeIPs.add(InetAddress.getByName("node2").getHostAddress());
+		//nodeIPs.add(InetAddress.getByName("node2").getHostAddress());
 		String minerIP = InetAddress.getByName("miner").getHostAddress();
 		String searchAgentIP = InetAddress.getByName("search_agent").getHostAddress();
 		String serviceAgentIP = InetAddress.getByName("service_agent").getHostAddress();

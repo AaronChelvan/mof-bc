@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
+import javax.xml.bind.DatatypeConverter;
+
 import org.iq80.leveldb.*;
 import static org.fusesource.leveldbjni.JniDBFactory.*;
 import java.io.*;
@@ -65,6 +67,7 @@ public class Miner {
 		t.setPrevTid(prevTransactionId);
 		t.setTid();
 		prevTransactionId = t.getTid();
+		System.out.println("Received transaction = " + DatatypeConverter.printHexBinary(bytes(t.getTid())));
 		
 		// Add the transaction to the block
 		currentBlock.addTransaction(t);
@@ -82,7 +85,7 @@ public class Miner {
 			numBlocks++;
 			
 			// Transmit the block to all nodes and agents
-			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "node2", "search_agent");
+			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "search_agent");
 			transmitBlock(currentBlock, blockRecipients);
 			
 			// Checks if a key does not exist
@@ -118,7 +121,7 @@ public class Miner {
 			ArrayList<String> recipients = new ArrayList<String>(); 
 			recipients.add("service_agent");
 			recipients.add("node1");
-			recipients.add("node2");
+			//recipients.add("node2");
 			recipients.add("search_agent");
 			recipients.remove(Util.socketClientName(connectionSocket));
 			

@@ -12,11 +12,15 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import javax.xml.bind.DatatypeConverter;
 
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
@@ -27,6 +31,7 @@ public class Node {
 	private static Socket clientSocket;
 	private static ObjectOutputStream output;
 	private static int transactionTypeCounter;
+	private static ArrayList<TransactionLocation> myTransactions;
 	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
 		System.out.println("Node is running");
@@ -60,7 +65,11 @@ public class Node {
 		};
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.SECONDS);
-				
+		
+		// myTransactions contains the locations of all transactions created by this node.
+		// After a transaction is removed or summarized, it is removed from this node.
+		myTransactions = new ArrayList<TransactionLocation>();
+		
 		// Socket setup
 		ServerSocket nodeSocket = new ServerSocket(8000);
 		
@@ -69,6 +78,15 @@ public class Node {
 			Socket connectionSocket = nodeSocket.accept();
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			Block b = (Block) in.readObject();
+			
+			// Scan the block for transactions created by this node and add their locations to "myTransactions"
+			for (Transaction t: b.getTransactions()) {
+				if (t.getPubKey().equals(publicKeyStr)) {
+					myTransactions.add(new TransactionLocation(b.getBlockId(), t.getTid()));
+				}
+			}
+			
+			// Add the block to this node's blockchain database
 			db.put(bytes(b.getBlockId()), Util.serialize(b));
 			System.out.println("Received block from the miner");
 		}
@@ -76,7 +94,6 @@ public class Node {
 	}
 	
 	private static void sendTransaction(String publicKeyStr) throws IOException, ClassNotFoundException {
-		
 		// Create a standard transaction, or a remove transaction
 		Transaction toSend = null;
 		TransactionType nextTransactionType = getNextTransactionType();
@@ -86,30 +103,23 @@ public class Node {
 			toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
 		
 		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
-			// Search the blockchain and pick a transaction to remove
-			DBIterator iterator = db.iterator();
-			boolean found = false; // Have we found a transaction we want to remove?
-			TransactionLocation tl = null; // Should contain the transactionLocation of the transaction to be removed
+			System.out.println("sending a remove transaction");
 			
-			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
-				String blockID = new String(iterator.peekNext().getKey());
-				Block block = Util.deserialize(iterator.peekNext().getValue());
+			// If there are transactions that can be removed
+			if (myTransactions.size() > 0) {
+				// Pick a transaction at random
+				Random rand = new Random();
+				TransactionLocation tl = myTransactions.get(rand.nextInt(myTransactions.size()));
 				
-				for (Transaction t: block.getTransactions()) {
-					if (t.getPubKey().equals(publicKeyStr)) {
-						tl = new TransactionLocation(blockID, t.getTid());
-						found = true;
-						break;
-					}
-				}
-				if (found == true) break;
-			}
-			
-			if (found == true) {
+				// Remove that transaction location from the list
+				myTransactions.remove(tl);
+				
+				// Add the location of that transaction to the remove transaction
 				toSend = new Transaction("", publicKeyStr, TransactionType.Remove);
 				toSend.addLocation(tl);
+			} else {
+				System.out.println("Haven't found any transactions to remove");
 			}
-			iterator.close();
 			
 		} else { // Invalid transaction type
 			System.out.println("Invalid transaction type");
@@ -119,9 +129,9 @@ public class Node {
 		// Send the transaction to the miner
 		if (toSend != null) {
 			if (toSend.getType() == TransactionType.Standard) {
-				System.out.println("Sent std transaction = " + toSend);
+				System.out.println("Sent std tx = " +  toSend);
 			} else if (toSend.getType() == TransactionType.Remove) {
-				System.out.println("Sent remove transaction = " + toSend);
+				System.out.println("Sent remove tx = " + toSend);
 			} else {
 				System.out.println("Invalid transaction type");
 			}
@@ -137,7 +147,7 @@ public class Node {
 	// Call this function to determine what type of transaction the node should create next.
 	// Can be modified to increase how often a remove transaction is created, etc.
 	private static TransactionType getNextTransactionType() {
-		if (transactionTypeCounter == 2) {
+		if (transactionTypeCounter >= 2) {
 			transactionTypeCounter = 0;
 			return TransactionType.Remove;
 		} else {
