@@ -48,7 +48,8 @@ public class Node {
 		String privateKeyStr = Base64.getEncoder().encodeToString(privateKey.getEncoded());
 
 		// Thread for sending transactions
-		Runnable blockchainScan = new Runnable() {
+		transactionTypeCounter = 0;
+		Runnable sendTransactionRunnable = new Runnable() {
 			public void run() {
 				try {
 					sendTransaction(publicKeyStr);
@@ -58,7 +59,7 @@ public class Node {
 			}
 		};
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(blockchainScan, 0, 1, TimeUnit.MILLISECONDS);
+		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.SECONDS);
 				
 		// Socket setup
 		ServerSocket nodeSocket = new ServerSocket(8000);
@@ -117,6 +118,14 @@ public class Node {
 		
 		// Send the transaction to the miner
 		if (toSend != null) {
+			if (toSend.getType() == TransactionType.Standard) {
+				System.out.println("Sent std transaction = " + toSend);
+			} else if (toSend.getType() == TransactionType.Remove) {
+				System.out.println("Sent remove transaction = " + toSend);
+			} else {
+				System.out.println("Invalid transaction type");
+			}
+			
 			clientSocket = Util.connectToServerSocket("miner", 8000);
 			output = new ObjectOutputStream(clientSocket.getOutputStream());
 			output.writeObject(toSend);
