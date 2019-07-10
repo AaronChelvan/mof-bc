@@ -26,13 +26,13 @@ public class Generator {
 		String privateKeyStr = Base64.getEncoder().encodeToString(privateKey.getEncoded());
 		System.out.println("Private key = " + privateKeyStr);
 		
-		// Convert strings back to keys
+		// Convert the strings back to keys
         if (publicKey.equals(stringToPublicKey(publicKeyStr))) {
         	System.out.println("Public keys are equal!");
         }
         
         if (privateKey.equals(stringToPrivateKey(privateKeyStr))) {
-        	System.out.println("Public keys are equal!");
+        	System.out.println("Private keys are equal!");
         } 
         
 	}

@@ -7,7 +7,14 @@ import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 
 public class Util {
@@ -77,6 +84,27 @@ public class Util {
 		}
 		
 		return clientSocket;
+	}
+	
+	// Accepts a key that has been encoded as a string and returns a public key
+	public static Key stringToPublicKey(String keyStr) throws NoSuchAlgorithmException, InvalidKeySpecException {
+		byte[] keyBytes = Base64.getDecoder().decode(keyStr);
+		X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        return kf.generatePublic(keySpec);
+	}
+	
+	// Accepts a key that has been encoded as a string and returns a public key
+	public static Key stringToPrivateKey(String keyStr) throws NoSuchAlgorithmException, InvalidKeySpecException {
+		byte[] keyBytes = Base64.getDecoder().decode(keyStr);
+		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        return kf.generatePrivate(keySpec);
+	}
+	
+	// Converts a key to a string
+	public static String keyToString(Key k) {
+		return Base64.getEncoder().encodeToString(k.getEncoded());
 	}
 	
 
