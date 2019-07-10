@@ -53,5 +53,9 @@ public class Generator {
         return kf.generatePrivate(keySpec);
 	}
 	
+	// Converts a key to a string
+	public static String keyToString(Key k) {
+		return Base64.getEncoder().encodeToString(k.getEncoded());
+	}
 
 }

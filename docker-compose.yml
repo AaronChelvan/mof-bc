@@ -1,6 +1,9 @@
 version: '3'
 services:
   node1:
+    environment:
+      PUB_KEY: "${NODE1_PUB_KEY}"
+      PRIV_KEY: "${NODE1_PRIV_KEY}"
     build:
       context: .
       dockerfile: node/Dockerfile

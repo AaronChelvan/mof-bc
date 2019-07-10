@@ -12,6 +12,7 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Random;
@@ -33,7 +34,7 @@ public class Node {
 	private static int transactionTypeCounter;
 	private static ArrayList<TransactionLocation> myTransactions;
 	
-	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException {
+	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException {
 		System.out.println("Node is running");
 		
 		// LevelDB setup
@@ -41,16 +42,12 @@ public class Node {
 		options.createIfMissing(true);
 		db = factory.open(new File("blockchain"), options);
 
-		// Generate an RSA key pair
-		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-		kpg.initialize(2048);
-		KeyPair kp = kpg.generateKeyPair();
-		Key publicKey = kp.getPublic();
-		Key privateKey = kp.getPrivate();
-
-		// Convert the keys to strings
-		String publicKeyStr = Base64.getEncoder().encodeToString(publicKey.getEncoded());
-		String privateKeyStr = Base64.getEncoder().encodeToString(privateKey.getEncoded());
+		// Load the RSA key pair from the environment variables
+		String publicKeyStr = System.getenv("PUB_KEY");
+		String privateKeyStr = System.getenv("PRIV_KEY");
+		
+		Key publicKey = Util.stringToPublicKey(publicKeyStr);
+		Key privateKey = Util.stringToPrivateKey(privateKeyStr);
 
 		// Thread for sending transactions
 		transactionTypeCounter = 0;
