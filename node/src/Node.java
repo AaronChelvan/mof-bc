@@ -12,6 +12,8 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -50,8 +52,8 @@ public class Node {
 		publicKeyStr = System.getenv("PUB_KEY");
 		privateKeyStr = System.getenv("PRIV_KEY");
 		
-		Key publicKey = Util.stringToPublicKey(publicKeyStr);
-		Key privateKey = Util.stringToPrivateKey(privateKeyStr);
+		PublicKey publicKey = Util.stringToPublicKey(publicKeyStr);
+		PrivateKey privateKey = Util.stringToPrivateKey(privateKeyStr);
 
 		// Load the Generator Verifier Secret (GVS)
 		gvs = System.getenv("GVS");
@@ -113,8 +115,7 @@ public class Node {
 			// If there are transactions that can be removed
 			if (myTransactions.size() > 0) {
 				// Pick a transaction at random
-				Random rand = new Random();
-				TransactionLocation tl = myTransactions.get(rand.nextInt(myTransactions.size()));
+				TransactionLocation tl = myTransactions.get(new Random().nextInt(myTransactions.size()));
 				
 				// Remove that transaction location from the list
 				myTransactions.remove(tl);
