@@ -62,11 +62,6 @@ public class Miner {
 		
 		//System.out.println("processing transaction");
 		Transaction t = (Transaction) in.readObject();
-		
-		// Set the prevTid and tid fields in the transaction
-		t.setPrevTid(prevTransactionId);
-		t.setTid();
-		prevTransactionId = t.getTid();
 		System.out.println("Received transaction = " + DatatypeConverter.printHexBinary(bytes(t.getTid())));
 		
 		// Add the transaction to the block
@@ -102,7 +97,6 @@ public class Miner {
 			
 			// Start adding transactions to a new block
 			currentBlock = new Block();
-			prevTransactionId = "";
 			prevBlockId = currentBlockId;
 		}
 	}

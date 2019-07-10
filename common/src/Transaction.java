@@ -14,17 +14,18 @@ public class Transaction implements Serializable {
 	private String timestamp; // Timestamp of creation
 	private String tid; // Transaction ID
 	private String prevTid; // Previous transaction ID
-	private String signature;
+	private byte[] gv; // Generator Verifier
 	private String pubKey;
 	
-	public Transaction(byte[] data, String pubKey, TransactionType type) {
+	public Transaction(byte[] data, String pubKey, byte[] gv, String prevTid, TransactionType type) throws IOException {
 		this.type = type;
 		this.data = data;
 		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-		tid = "";
-		prevTid = "";
-		signature = "";
+		tid = null;
+		this.prevTid = prevTid;
+		this.gv = gv;
 		this.pubKey = pubKey;
+		this.setTid();
 	}
 	
 	public byte[] getData() {
@@ -47,7 +48,7 @@ public class Transaction implements Serializable {
 		md.update(data);
 		md.update(timestamp.getBytes());
 		md.update(prevTid.getBytes());
-		md.update(signature.getBytes());
+		md.update(gv);
 		md.update(pubKey.getBytes());
 		tid = new String(md.digest());
 	}
@@ -71,7 +72,7 @@ public class Transaction implements Serializable {
 	public void clearTransaction() {
 		this.type = null;
 		this.timestamp = null;
-		this.signature = null;
+		this.gv = null;
 		this.pubKey = null;
 	}
 }

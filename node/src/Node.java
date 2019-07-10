@@ -8,12 +8,15 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -35,7 +38,10 @@ public class Node {
 	private static ObjectOutputStream output;
 	private static int transactionTypeCounter;
 	private static ArrayList<TransactionLocation> myTransactions;
+	private static String prevTid;
 	
+	private static PrivateKey privateKey;
+	private static PublicKey publicKey;
 	private static String publicKeyStr;
 	private static String privateKeyStr;
 	private static String gvs;
@@ -52,11 +58,14 @@ public class Node {
 		publicKeyStr = System.getenv("PUB_KEY");
 		privateKeyStr = System.getenv("PRIV_KEY");
 		
-		PublicKey publicKey = Util.stringToPublicKey(publicKeyStr);
-		PrivateKey privateKey = Util.stringToPrivateKey(privateKeyStr);
+		publicKey = Util.stringToPublicKey(publicKeyStr);
+		privateKey = Util.stringToPrivateKey(privateKeyStr);
 
 		// Load the Generator Verifier Secret (GVS)
 		gvs = System.getenv("GVS");
+		
+		// Initialize the previous transaction ID to an empty string
+		prevTid = "";
 		
 		// Thread for sending transactions
 		transactionTypeCounter = 0;
@@ -64,7 +73,7 @@ public class Node {
 			public void run() {
 				try {
 					sendTransaction();
-				} catch (IOException | ClassNotFoundException e) {
+				} catch (IOException | ClassNotFoundException | InvalidKeyException | NoSuchAlgorithmException | SignatureException e) {
 					e.printStackTrace();
 				}
 			}
@@ -99,15 +108,16 @@ public class Node {
 		
 	}
 	
-	private static void sendTransaction() throws IOException, ClassNotFoundException {
+	private static void sendTransaction() throws IOException, ClassNotFoundException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		// Create a standard transaction, or a remove transaction
 		Transaction toSend = null;
 		TransactionType nextTransactionType = getNextTransactionType();
+		byte[] gv = computeGv();
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
 			byte[] transactionData = new byte[30]; // Generate a random string
 			new Random().nextBytes(transactionData);
-			toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
+			toSend = new Transaction(transactionData, publicKeyStr, gv, prevTid, TransactionType.Standard);
 		
 		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
 			System.out.println("sending a remove transaction");
@@ -122,7 +132,7 @@ public class Node {
 				
 				// Add the location of that transaction to the remove transaction
 				byte[] transactionData = Util.serialize(tl);
-				toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Remove);
+				toSend = new Transaction(transactionData, publicKeyStr, gv, prevTid, TransactionType.Remove);
 			} else {
 				System.out.println("Haven't found any transactions to remove");
 			}
@@ -146,10 +156,25 @@ public class Node {
 			output = new ObjectOutputStream(clientSocket.getOutputStream());
 			output.writeObject(toSend);
 			clientSocket.close();
+			
+			prevTid = toSend.getTid();
 		}
 		
 	}
 	
+	private static byte[] computeGv() throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+		MessageDigest md = null;
+		try {
+			md = MessageDigest.getInstance("SHA-256");
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		md.update(gvs.getBytes());
+		md.update(prevTid.getBytes());
+		
+		return Util.sign(privateKey, md.digest());
+	}
+
 	// Call this function to determine what type of transaction the node should create next.
 	// Can be modified to increase how often a remove transaction is created, etc.
 	private static TransactionType getNextTransactionType() {
