@@ -10,15 +10,14 @@ public class Transaction implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	private TransactionType type;
-	private String data;
+	private byte[] data;
 	private String timestamp; // Timestamp of creation
 	private String tid; // Transaction ID
 	private String prevTid; // Previous transaction ID
 	private String signature;
 	private String pubKey;
-	private ArrayList<TransactionLocation> locations;
 	
-	public Transaction(String data, String pubKey, TransactionType type) {
+	public Transaction(byte[] data, String pubKey, TransactionType type) {
 		this.type = type;
 		this.data = data;
 		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
@@ -26,10 +25,9 @@ public class Transaction implements Serializable {
 		prevTid = "";
 		signature = "";
 		this.pubKey = pubKey;
-		locations = new ArrayList<TransactionLocation>();
 	}
 	
-	public String getData() {
+	public byte[] getData() {
 		return data;
 	}
 	
@@ -46,12 +44,11 @@ public class Transaction implements Serializable {
 			e.printStackTrace();
 		}
 		md.update(type.name().getBytes());
-		md.update(data.getBytes());
+		md.update(data);
 		md.update(timestamp.getBytes());
 		md.update(prevTid.getBytes());
 		md.update(signature.getBytes());
 		md.update(pubKey.getBytes());
-		md.update(Util.serialize(locations));
 		tid = new String(md.digest());
 	}
 	
@@ -69,18 +66,6 @@ public class Transaction implements Serializable {
 	
 	public TransactionType getType() {
 		return type;
-	}
-	
-	public void addLocation(TransactionLocation tl) {
-		locations.add(tl);
-	}
-	
-	public TransactionLocation getRemoveLocation() {
-		return locations.get(0);
-	}
-	
-	public ArrayList<TransactionLocation> getSummaryLocations() {
-		return locations;
 	}
 
 	public void clearTransaction() {

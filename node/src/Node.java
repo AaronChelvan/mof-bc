@@ -103,7 +103,8 @@ public class Node {
 		TransactionType nextTransactionType = getNextTransactionType();
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
-			String transactionData = UUID.randomUUID().toString(); // Generate a random string
+			byte[] transactionData = new byte[30]; // Generate a random string
+			new Random().nextBytes(transactionData);
 			toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Standard);
 		
 		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
@@ -119,8 +120,8 @@ public class Node {
 				myTransactions.remove(tl);
 				
 				// Add the location of that transaction to the remove transaction
-				toSend = new Transaction("", publicKeyStr, TransactionType.Remove);
-				toSend.addLocation(tl);
+				byte[] transactionData = Util.serialize(tl);
+				toSend = new Transaction(transactionData, publicKeyStr, TransactionType.Remove);
 			} else {
 				System.out.println("Haven't found any transactions to remove");
 			}

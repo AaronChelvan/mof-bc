@@ -15,6 +15,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import javax.xml.bind.DatatypeConverter;
+
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
@@ -43,7 +45,6 @@ public class SearchAgent {
 			Socket connectionSocket = agentSocket.accept();
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			Block currentBlock = (Block) in.readObject();
-			System.out.println("Received a block from the miner");
 			
 			if (!Util.socketClientName(connectionSocket).equals("miner")) {
 				System.out.println("Something went wrong!");
@@ -51,17 +52,19 @@ public class SearchAgent {
 			}
 			
 			// If this block is already in the database, then it is an updated
-			// block that has already had transactions removed or summarised
+			// block which has already had its remove and summary transactions processed
 			if (db.get(bytes(currentBlock.getBlockId())) == null) {
+				System.out.println("Received new block from miner");
 				// Scan the block for remove transactions & summary transactions
 				for (Transaction t: currentBlock.getTransactions()) {
 					if (t.getType() == TransactionType.Remove) {
+						// Extract the location of the transaction to be removed
+						TransactionLocation tl = Util.deserialize(t.getData());
+						System.out.println("Found remove transaction = " + DatatypeConverter.printHexBinary(bytes(tl.getTransactionID())));
+						
 						// TODO - Verify if the creator of this transaction is the same node
 						// that created the transaction that is to be removed
-						System.out.println("Found a remove transaction");
 						
-						// Extract the location of the transaction to be removed
-						TransactionLocation tl = t.getRemoveLocation();
 						
 						// Send the location to the service agent
 						// Open a connection
@@ -78,6 +81,8 @@ public class SearchAgent {
 						// TODO			
 					}
 				}
+			} else {
+				System.out.println("Received updated block");
 			}
 			
 			// Add the block to the blockchain
