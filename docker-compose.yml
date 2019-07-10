@@ -4,6 +4,7 @@ services:
     environment:
       PUB_KEY: "${NODE1_PUB_KEY}"
       PRIV_KEY: "${NODE1_PRIV_KEY}"
+      GVS: "${NODE1_GVS}"
     build:
       context: .
       dockerfile: node/Dockerfile

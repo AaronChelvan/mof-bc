@@ -34,6 +34,10 @@ public class Node {
 	private static int transactionTypeCounter;
 	private static ArrayList<TransactionLocation> myTransactions;
 	
+	private static String publicKeyStr;
+	private static String privateKeyStr;
+	private static String gvs;
+	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException {
 		System.out.println("Node is running");
 		
@@ -43,18 +47,21 @@ public class Node {
 		db = factory.open(new File("blockchain"), options);
 
 		// Load the RSA key pair from the environment variables
-		String publicKeyStr = System.getenv("PUB_KEY");
-		String privateKeyStr = System.getenv("PRIV_KEY");
+		publicKeyStr = System.getenv("PUB_KEY");
+		privateKeyStr = System.getenv("PRIV_KEY");
 		
 		Key publicKey = Util.stringToPublicKey(publicKeyStr);
 		Key privateKey = Util.stringToPrivateKey(privateKeyStr);
 
+		// Load the Generator Verifier Secret (GVS)
+		gvs = System.getenv("GVS");
+		
 		// Thread for sending transactions
 		transactionTypeCounter = 0;
 		Runnable sendTransactionRunnable = new Runnable() {
 			public void run() {
 				try {
-					sendTransaction(publicKeyStr);
+					sendTransaction();
 				} catch (IOException | ClassNotFoundException e) {
 					e.printStackTrace();
 				}
@@ -90,7 +97,7 @@ public class Node {
 		
 	}
 	
-	private static void sendTransaction(String publicKeyStr) throws IOException, ClassNotFoundException {
+	private static void sendTransaction() throws IOException, ClassNotFoundException {
 		// Create a standard transaction, or a remove transaction
 		Transaction toSend = null;
 		TransactionType nextTransactionType = getNextTransactionType();
