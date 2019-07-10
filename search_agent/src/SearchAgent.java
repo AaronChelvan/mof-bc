@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -53,18 +54,33 @@ public class SearchAgent {
 			
 			// If this block is already in the database, then it is an updated
 			// block which has already had its remove and summary transactions processed
-			if (db.get(bytes(currentBlock.getBlockId())) == null) {
+			if (db.get(currentBlock.getBlockId()) == null) {
 				System.out.println("Received new block from miner");
 				// Scan the block for remove transactions & summary transactions
 				for (Transaction t: currentBlock.getTransactions()) {
 					if (t.getType() == TransactionType.Remove) {
 						// Extract the location of the transaction to be removed
 						TransactionLocation tl = Util.deserialize(t.getData());
-						System.out.println("Found remove transaction = " + DatatypeConverter.printHexBinary(bytes(tl.getTransactionID())));
+						System.out.println("Found remove transaction = " + DatatypeConverter.printHexBinary(tl.getTransactionID()));
 						
 						// TODO - Verify if the creator of this transaction is the same node
 						// that created the transaction that is to be removed
+						Block toRemoveBlock = Util.deserialize(db.get(tl.getBlockID()));
+						Transaction toRemove = null;
+						for (Transaction t2: toRemoveBlock.getTransactions()) {
+							if (Arrays.equals(t2.getTid(), tl.getTransactionID())) {
+								toRemove = t2;
+								break;
+							}
+						}
+						/*
+						if (!Util.verify(t.data["pubKey"], t.data["unsignedGV"], toRemove.data["signedGV"])) {
+							continue;
+						}
 						
+						if (!Util.verify(t.data["pubKey"], t.data["sigMessage"], t.data["sig"])) {
+							continue;
+						}*/
 						
 						// Send the location to the service agent
 						// Open a connection
@@ -86,7 +102,7 @@ public class SearchAgent {
 			}
 			
 			// Add the block to the blockchain
-			db.put(bytes(currentBlock.getBlockId()), Util.serialize(currentBlock));
+			db.put(currentBlock.getBlockId(), Util.serialize(currentBlock));
 		}
 	}
 	

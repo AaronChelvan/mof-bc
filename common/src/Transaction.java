@@ -12,19 +12,16 @@ public class Transaction implements Serializable {
 	private TransactionType type;
 	private byte[] data;
 	private String timestamp; // Timestamp of creation
-	private String tid; // Transaction ID
-	private String prevTid; // Previous transaction ID
+	private byte[] tid; // Transaction ID
+	private byte[] prevTid; // Previous transaction ID
 	private byte[] gv; // Generator Verifier
-	private String pubKey;
 	
-	public Transaction(byte[] data, String pubKey, byte[] gv, String prevTid, TransactionType type) throws IOException {
-		this.type = type;
+	public Transaction(byte[] data, byte[] gv, byte[] prevTid, TransactionType type) throws IOException {
 		this.data = data;
-		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-		tid = null;
-		this.prevTid = prevTid;
 		this.gv = gv;
-		this.pubKey = pubKey;
+		this.prevTid = prevTid;
+		this.type = type;
+		timestamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
 		this.setTid();
 	}
 	
@@ -32,7 +29,7 @@ public class Transaction implements Serializable {
 		return data;
 	}
 	
-	public String getTid() {
+	public byte[] getTid() {
 		return tid;
 	}
 	
@@ -47,32 +44,31 @@ public class Transaction implements Serializable {
 		md.update(type.name().getBytes());
 		md.update(data);
 		md.update(timestamp.getBytes());
-		md.update(prevTid.getBytes());
+		md.update(prevTid);
 		md.update(gv);
-		md.update(pubKey.getBytes());
-		tid = new String(md.digest());
+		tid = md.digest();
 	}
 	
-	public String getPrevTid() {
+	public byte[] getPrevTid() {
 		return prevTid;
 	}
 	
-	public void setPrevTid(String prevTid) {
+	public void setPrevTid(byte[] prevTid) {
 		this.prevTid = prevTid;
-	}
-	
-	public String getPubKey() {
-		return pubKey;
 	}
 	
 	public TransactionType getType() {
 		return type;
+	}
+	
+	public byte[] getGv() {
+		return gv;
 	}
 
 	public void clearTransaction() {
 		this.type = null;
 		this.timestamp = null;
 		this.gv = null;
-		this.pubKey = null;
+		this.data = null;
 	}
 }

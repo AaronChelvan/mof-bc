@@ -19,6 +19,7 @@ import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Random;
 import java.util.UUID;
@@ -38,7 +39,7 @@ public class Node {
 	private static ObjectOutputStream output;
 	private static int transactionTypeCounter;
 	private static ArrayList<TransactionLocation> myTransactions;
-	private static String prevTid;
+	private static byte[] prevTid;
 	
 	private static PrivateKey privateKey;
 	private static PublicKey publicKey;
@@ -46,7 +47,7 @@ public class Node {
 	private static String privateKeyStr;
 	private static String gvs;
 	
-	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException {
+	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
 		System.out.println("Node is running");
 		
 		// LevelDB setup
@@ -65,7 +66,7 @@ public class Node {
 		gvs = System.getenv("GVS");
 		
 		// Initialize the previous transaction ID to an empty string
-		prevTid = "";
+		prevTid = null;
 		
 		// Thread for sending transactions
 		transactionTypeCounter = 0;
@@ -79,7 +80,7 @@ public class Node {
 			}
 		};
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.SECONDS);
+		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.SECONDS); // How often the node should create a transaction
 		
 		// myTransactions contains the locations of all transactions created by this node.
 		// After a transaction is removed or summarized, it is removed from this node.
@@ -96,13 +97,13 @@ public class Node {
 			
 			// Scan the block for transactions created by this node and add their locations to "myTransactions"
 			for (Transaction t: b.getTransactions()) {
-				if (t.getPubKey().equals(publicKeyStr)) {
+				if (Arrays.equals(computeGv(t.getPrevTid()), t.getGv())) {
 					myTransactions.add(new TransactionLocation(b.getBlockId(), t.getTid()));
 				}
 			}
 			
 			// Add the block to this node's blockchain database
-			db.put(bytes(b.getBlockId()), Util.serialize(b));
+			db.put(b.getBlockId(), Util.serialize(b));
 			System.out.println("Received block from the miner");
 		}
 		
@@ -112,12 +113,12 @@ public class Node {
 		// Create a standard transaction, or a remove transaction
 		Transaction toSend = null;
 		TransactionType nextTransactionType = getNextTransactionType();
-		byte[] gv = computeGv();
+		byte[] gv = computeGv(prevTid);
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
 			byte[] transactionData = new byte[30]; // Generate a random string
 			new Random().nextBytes(transactionData);
-			toSend = new Transaction(transactionData, publicKeyStr, gv, prevTid, TransactionType.Standard);
+			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Standard);
 		
 		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
 			System.out.println("sending a remove transaction");
@@ -132,7 +133,7 @@ public class Node {
 				
 				// Add the location of that transaction to the remove transaction
 				byte[] transactionData = Util.serialize(tl);
-				toSend = new Transaction(transactionData, publicKeyStr, gv, prevTid, TransactionType.Remove);
+				toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Remove);
 			} else {
 				System.out.println("Haven't found any transactions to remove");
 			}
@@ -162,7 +163,7 @@ public class Node {
 		
 	}
 	
-	private static byte[] computeGv() throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+	private static byte[] computeGv(byte[] prevTid) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		MessageDigest md = null;
 		try {
 			md = MessageDigest.getInstance("SHA-256");
@@ -170,7 +171,7 @@ public class Node {
 			e.printStackTrace();
 		}
 		md.update(gvs.getBytes());
-		md.update(prevTid.getBytes());
+		md.update(prevTid);
 		
 		return Util.sign(privateKey, md.digest());
 	}

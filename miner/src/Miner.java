@@ -19,9 +19,9 @@ public class Miner {
 	private static DB db;
 	
 	private static Block currentBlock;
-	private static String prevTransactionId;
-	private static String prevBlockId;
-	private static String currentBlockId;	
+	private static byte[] prevTransactionId;
+	private static byte[] prevBlockId;
+	private static byte[] currentBlockId;	
 
 	public static void main(String[] args) throws Exception {
 		System.out.println("Miner is running");
@@ -35,9 +35,9 @@ public class Miner {
 		
 		// Blockchain configuration
 		currentBlock = new Block();
-		prevTransactionId = "";
-		prevBlockId = "";
-		currentBlockId = "";
+		prevTransactionId = null;
+		prevBlockId = null;
+		currentBlockId = null;
 		
 		// Socket setup
 		ServerSocket minerSocket = new ServerSocket(8000);
@@ -62,7 +62,7 @@ public class Miner {
 		
 		//System.out.println("processing transaction");
 		Transaction t = (Transaction) in.readObject();
-		System.out.println("Received transaction = " + DatatypeConverter.printHexBinary(bytes(t.getTid())));
+		System.out.println("Received transaction = " + DatatypeConverter.printHexBinary(t.getTid()));
 		
 		// Add the transaction to the block
 		currentBlock.addTransaction(t);
@@ -76,7 +76,7 @@ public class Miner {
 			currentBlockId = currentBlock.getBlockId();
 			
 			// Add the block to the blockchain
-			db.put(bytes(currentBlockId), Util.serialize(currentBlock));
+			db.put(currentBlockId, Util.serialize(currentBlock));
 			numBlocks++;
 			
 			// Transmit the block to all nodes and agents

@@ -8,16 +8,16 @@ public class Block implements Serializable {
 	private static final long serialVersionUID = 1L;
 	public static final int maxNumTransactions = 20; // Maximum number of transactions in a block
 	private ArrayList<Transaction> transactionList;
-	private String blockId;
-	private String prevBlockId;
+	private byte[] blockId;
+	private byte[] prevBlockId;
 	
 	public Block() {
 		transactionList = new ArrayList<Transaction>(maxNumTransactions);
-		blockId = "";
-		prevBlockId = "";
+		blockId = null;
+		prevBlockId = null;
 	}
 	
-	public String getBlockId() {
+	public byte[] getBlockId() {
 		return blockId;
 	}
 
@@ -29,16 +29,16 @@ public class Block implements Serializable {
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}
-		md.update(prevBlockId.getBytes());
+		md.update(prevBlockId);
 		for (Transaction t: transactionList) {
-			md.update(t.getTid().getBytes());
-			md.update(t.getPrevTid().getBytes());
+			md.update(t.getTid());
+			md.update(t.getPrevTid());
 		}
 		
-		blockId = new String(md.digest());;
+		blockId = md.digest();
 	}
 	
-	public void setPrevBlockId(String id) {
+	public void setPrevBlockId(byte[] id) {
 		prevBlockId = id;
 	}
 

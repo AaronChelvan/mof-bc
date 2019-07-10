@@ -3,19 +3,19 @@ import java.io.Serializable;
 public class TransactionLocation implements Serializable {
 
 	private static final long serialVersionUID = 1L;
-	private String blockID;
-	private String transactionID;
+	private byte[] blockID;
+	private byte[] transactionID;
 	
-	public TransactionLocation(String blockID, String transactionID) {
+	public TransactionLocation(byte[] blockID, byte[] transactionID) {
 		this.blockID = blockID;
 		this.transactionID = transactionID;
 	}
 	
-	public String getBlockID() {
+	public byte[] getBlockID() {
 		return blockID;
 	}
 	
-	public String getTransactionID() {
+	public byte[] getTransactionID() {
 		return transactionID;
 	}
 

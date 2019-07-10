@@ -17,7 +17,7 @@ import org.iq80.leveldb.Options;
 
 public class ServiceAgent {
 	private static DB db;
-	private static HashMap<String, Block> updatedBlocks; // Key = block ID. Val = block.
+	private static HashMap<byte[], Block> updatedBlocks; // Key = block ID. Val = block.
 	
 	public static void main(String[] args) throws IOException, ClassNotFoundException {
 		// LevelDB setup
@@ -29,7 +29,7 @@ public class ServiceAgent {
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
 		// A list of blocks that have been updated over the last cleaning period
-		updatedBlocks = new HashMap<String, Block>(); // Key = block ID. Val = block.
+		updatedBlocks = new HashMap<byte[], Block>(); // Key = block ID. Val = block.
 		
 		// Cleaning period setup
 		int cleaningPeriod = 10; // (Seconds)
@@ -56,7 +56,7 @@ public class ServiceAgent {
 				System.out.println("Received a block from the miner");
 				// Add it to the database
 				Block b = (Block) in.readObject();
-				db.put(bytes(b.getBlockId()), Util.serialize(b));
+				db.put(b.getBlockId(), Util.serialize(b));
 			
 			// Received a remove transaction location from the search agent
 			} else if (Util.socketClientName(connectionSocket).equals("search_agent")) {
@@ -66,7 +66,7 @@ public class ServiceAgent {
 				// get it from the database
 				Block b;
 				if (!updatedBlocks.containsKey(tl.getBlockID())) {
-					b = Util.deserialize(db.get(bytes(tl.getBlockID())));
+					b = Util.deserialize(db.get(tl.getBlockID()));
 				} else {
 					b = updatedBlocks.get(tl.getBlockID());
 				}
@@ -107,7 +107,7 @@ public class ServiceAgent {
 		
 		// Write the updated blocks to the database
 		for (Block b : updatedBlocks.values()) {
-			db.put(bytes(b.getBlockId()), Util.serialize(b));
+			db.put(b.getBlockId(), Util.serialize(b));
 		}
 		
 		// Clear the list of updated blocks
