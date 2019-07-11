@@ -35,9 +35,9 @@ public class Miner {
 		
 		// Blockchain configuration
 		currentBlock = new Block();
-		prevTransactionId = null;
-		prevBlockId = null;
-		currentBlockId = null;
+		prevTransactionId = new byte[0];
+		prevBlockId = new byte[0];
+		currentBlockId = new byte[0];
 		
 		// Socket setup
 		ServerSocket minerSocket = new ServerSocket(8000);
@@ -106,9 +106,9 @@ public class Miner {
 	private static void updateBlockchain(Socket connectionSocket) throws ClassNotFoundException, IOException{
 		ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 		
-		HashMap<String, Block> updatedBlocks = (HashMap<String, Block>) in.readObject();
-		for (String blockId: updatedBlocks.keySet()) {
-			db.put(bytes(blockId), Util.serialize(updatedBlocks.get(blockId)));
+		HashMap<byte[], Block> updatedBlocks = (HashMap<byte[], Block>) in.readObject();
+		for (byte[] blockId: updatedBlocks.keySet()) {
+			db.put(blockId, Util.serialize(updatedBlocks.get(blockId)));
 			
 			// Transmit this updated block to the nodes and agents
 			// (except for the agent that sent this updated block to the miner)

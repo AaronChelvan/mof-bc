@@ -66,7 +66,7 @@ public class Node {
 		gvs = System.getenv("GVS");
 		
 		// Initialize the previous transaction ID to an empty string
-		prevTid = null;
+		prevTid = new byte[0];
 		
 		// Thread for sending transactions
 		transactionTypeCounter = 0;
@@ -114,6 +114,7 @@ public class Node {
 		Transaction toSend = null;
 		TransactionType nextTransactionType = getNextTransactionType();
 		byte[] gv = computeGv(prevTid);
+		
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
 			byte[] transactionData = new byte[30]; // Generate a random string
