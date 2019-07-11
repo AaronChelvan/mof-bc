@@ -8,6 +8,10 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,7 +30,7 @@ public class SearchAgent {
 	private static DB db; // LevelDB database used for storing the blockchain
 	private static HashMap<String, Block> updatedBlocks; // Key = block ID. Val = block.
 	
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
+	public static void main(String[] args) throws IOException, ClassNotFoundException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		// LevelDB setup
 		Options options = new Options();
 		options.createIfMissing(true);
@@ -60,7 +64,8 @@ public class SearchAgent {
 				for (Transaction t: currentBlock.getTransactions()) {
 					if (t.getType() == TransactionType.Remove) {
 						// Extract the location of the transaction to be removed
-						TransactionLocation tl = Util.deserialize(t.getData());
+						HashMap<String, byte[]> transactionData = t.getData();
+						TransactionLocation tl = Util.deserialize(transactionData.get("location"));
 						System.out.println("Found remove transaction = " + DatatypeConverter.printHexBinary(tl.getTransactionID()));
 						
 						// TODO - Verify if the creator of this transaction is the same node
@@ -73,14 +78,23 @@ public class SearchAgent {
 								break;
 							}
 						}
-						/*
-						if (!Util.verify(t.data["pubKey"], t.data["unsignedGV"], toRemove.data["signedGV"])) {
+						
+						if (toRemove == null) {
+							System.out.println("Something went wrong");
+							System.exit(0);
+						}
+						
+						PublicKey pubKey = Util.deserialize(transactionData.get("pubKey"));
+						if (!Util.verify(pubKey, transactionData.get("unsignedGv"), toRemove.getGv())) {
+							System.out.println("Failed 1st verification check");
 							continue;
 						}
 						
-						if (!Util.verify(t.data["pubKey"], t.data["sigMessage"], t.data["sig"])) {
+						if (!Util.verify(pubKey, transactionData.get("sigMessage"), transactionData.get("sig"))) {
+							System.out.println("Failed 2nd verification check");
 							continue;
-						}*/
+						}
+						System.out.println("Passed verification checks");
 						
 						// Send the location to the service agent
 						// Open a connection

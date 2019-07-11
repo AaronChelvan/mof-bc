@@ -4,19 +4,21 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 
 public class Transaction implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	private TransactionType type;
-	private byte[] data;
+	private HashMap<String, byte[]> data;
 	private String timestamp; // Timestamp of creation
 	private byte[] tid; // Transaction ID
 	private byte[] prevTid; // Previous transaction ID
 	private byte[] gv; // Generator Verifier
 	
-	public Transaction(byte[] data, byte[] gv, byte[] prevTid, TransactionType type) throws IOException {
+	public Transaction(HashMap<String, byte[]> data, byte[] gv, byte[] prevTid, TransactionType type) throws IOException {
 		this.data = data;
 		this.gv = gv;
 		this.prevTid = prevTid;
@@ -25,7 +27,7 @@ public class Transaction implements Serializable {
 		this.setTid();
 	}
 	
-	public byte[] getData() {
+	public HashMap<String, byte[]> getData() {
 		return data;
 	}
 	
@@ -42,7 +44,7 @@ public class Transaction implements Serializable {
 			e.printStackTrace();
 		}
 		md.update(type.name().getBytes());
-		md.update(data);
+		md.update(Util.serialize(data));
 		md.update(timestamp.getBytes());
 		md.update(prevTid);
 		md.update(gv);

@@ -21,6 +21,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -43,8 +44,6 @@ public class Node {
 	
 	private static PrivateKey privateKey;
 	private static PublicKey publicKey;
-	private static String publicKeyStr;
-	private static String privateKeyStr;
 	private static String gvs;
 	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
@@ -56,11 +55,8 @@ public class Node {
 		db = factory.open(new File("blockchain"), options);
 
 		// Load the RSA key pair from the environment variables
-		publicKeyStr = System.getenv("PUB_KEY");
-		privateKeyStr = System.getenv("PRIV_KEY");
-		
-		publicKey = Util.stringToPublicKey(publicKeyStr);
-		privateKey = Util.stringToPrivateKey(privateKeyStr);
+		publicKey = Util.stringToPublicKey(System.getenv("PUB_KEY"));
+		privateKey = Util.stringToPrivateKey(System.getenv("PRIV_KEY"));
 
 		// Load the Generator Verifier Secret (GVS)
 		gvs = System.getenv("GVS");
@@ -97,8 +93,8 @@ public class Node {
 			
 			// Scan the block for transactions created by this node and add their locations to "myTransactions"
 			for (Transaction t: b.getTransactions()) {
-				if (Arrays.equals(computeGv(t.getPrevTid()), t.getGv())) {
-					myTransactions.add(new TransactionLocation(b.getBlockId(), t.getTid()));
+				if (Arrays.equals(computeGv(t.getPrevTid(), true), t.getGv()) && t.getType() == TransactionType.Standard) {
+					myTransactions.add(new TransactionLocation(b.getBlockId(), t.getTid(), t.getPrevTid()));
 				}
 			}
 			
@@ -113,12 +109,15 @@ public class Node {
 		// Create a standard transaction, or a remove transaction
 		Transaction toSend = null;
 		TransactionType nextTransactionType = getNextTransactionType();
-		byte[] gv = computeGv(prevTid);
-		
+		byte[] gv = computeGv(prevTid, true);
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
-			byte[] transactionData = new byte[30]; // Generate a random string
-			new Random().nextBytes(transactionData);
+			byte[] randomMessage = new byte[30]; // Generate a random string
+			new Random().nextBytes(randomMessage);
+			
+			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
+			transactionData.put("data", randomMessage);
+			
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Standard);
 		
 		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
@@ -133,8 +132,17 @@ public class Node {
 				myTransactions.remove(tl);
 				
 				// Add the location of that transaction to the remove transaction
-				byte[] transactionData = Util.serialize(tl);
+				HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
+				transactionData.put("location", Util.serialize(tl));
+				transactionData.put("pubKey", Util.serialize(publicKey));
+				transactionData.put("unsignedGv", computeGv(tl.getPrevTransactionID(), false));
+				byte[] sigMessage = new byte[20]; // Generate a signature message
+				new Random().nextBytes(sigMessage);
+				transactionData.put("sigMessage", sigMessage);
+				transactionData.put("sig", Util.sign(privateKey, sigMessage));
+				
 				toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Remove);
+				
 			} else {
 				System.out.println("Haven't found any transactions to remove");
 			}
@@ -164,7 +172,7 @@ public class Node {
 		
 	}
 	
-	private static byte[] computeGv(byte[] prevTid) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+	private static byte[] computeGv(byte[] prevTid, boolean signed) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		MessageDigest md = null;
 		try {
 			md = MessageDigest.getInstance("SHA-256");
@@ -174,7 +182,12 @@ public class Node {
 		md.update(gvs.getBytes());
 		md.update(prevTid);
 		
-		return Util.sign(privateKey, md.digest());
+		if (signed == true) {
+			return Util.sign(privateKey, md.digest());
+		} else { // unsigned
+			return md.digest();
+		}
+		
 	}
 
 	// Call this function to determine what type of transaction the node should create next.

@@ -7,6 +7,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -73,7 +74,7 @@ public class ServiceAgent {
 				
 				// Find the transaction to be removed
 				for (Transaction t: b.getTransactions()) {
-					if (t.getTid().equals(tl.getTransactionID())) {
+					if (Arrays.equals(t.getTid(), tl.getTransactionID())) {
 						// Delete everything in this transaction except for the transaction ID and previous transaction ID
 						t.clearTransaction();
 						break;
