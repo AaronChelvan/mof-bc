@@ -8,15 +8,23 @@ services:
     build:
       context: .
       dockerfile: node/Dockerfile
+    volumes:
+      - ./blockchain_copies/node_blockchain:/usr/src/myapp/blockchain
   miner:
     build:
       context: .
       dockerfile: miner/Dockerfile
+    volumes:
+      - ./blockchain_copies/miner_blockchain:/usr/src/myapp/blockchain
   search_agent:
     build:
       context: .
       dockerfile: search_agent/Dockerfile
+    volumes:
+      - ./blockchain_copies/search_agent_blockchain:/usr/src/myapp/blockchain
   service_agent:
     build:
       context: .
       dockerfile: service_agent/Dockerfile
+    volumes:
+      - ./blockchain_copies/service_agent_blockchain:/usr/src/myapp/blockchain
