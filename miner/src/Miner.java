@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -57,7 +58,7 @@ public class Miner {
 	}
 	
 	// Handles when a transaction is received from a node
-	private static void processTransaction(Socket connectionSocket) throws DBException, IOException, ClassNotFoundException {
+	private static void processTransaction(Socket connectionSocket) throws DBException, IOException, ClassNotFoundException, InterruptedException {
 		ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 		
 		//System.out.println("processing transaction");
@@ -88,11 +89,12 @@ public class Miner {
 				System.out.println("key does not exist");
 			}*/
 			
-			// Stop running once a certain amount of blocks have been added to the blockchain
+			// Wait indefinitely once the blockchain has been filled
 			if (numBlocks >= maxBlockchainSize) {
-				System.out.println("Miner is exiting");
-				System.exit(0);
-				return;
+				System.out.println("Blockchain is full");
+				while (true) {
+					TimeUnit.MINUTES.sleep(1);
+				}
 			}
 			
 			// Start adding transactions to a new block
@@ -113,10 +115,10 @@ public class Miner {
 			// Transmit this updated block to the nodes and agents
 			// (except for the agent that sent this updated block to the miner)
 			ArrayList<String> recipients = new ArrayList<String>(); 
-			recipients.add("service_agent");
+			//recipients.add("service_agent");
 			recipients.add("node1");
 			//recipients.add("node2");
-			recipients.add("search_agent");
+			//recipients.add("search_agent");
 			recipients.remove(Util.socketClientName(connectionSocket));
 			
 			transmitBlock(updatedBlocks.get(blockId), recipients);
