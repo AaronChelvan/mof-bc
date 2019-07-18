@@ -18,19 +18,19 @@ import org.iq80.leveldb.Options;
 
 public class ServiceAgent {
 	private static DB db;
-	private static HashMap<byte[], Block> updatedBlocks; // Key = block ID. Val = block.
+	private static Options options;
+	private static HashMap<String, Block> updatedBlocks; // Key = block ID. Val = block.
 	
 	public static void main(String[] args) throws IOException, ClassNotFoundException {
 		// LevelDB setup
-		Options options = new Options();
+		options = new Options();
 		options.createIfMissing(true);
-		db = factory.open(new File("blockchain"), options);
 		
 		// Socket setup
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
 		// A list of blocks that have been updated over the last cleaning period
-		updatedBlocks = new HashMap<byte[], Block>(); // Key = block ID. Val = block.
+		updatedBlocks = new HashMap<String, Block>(); // Key = block ID. Val = block.
 		
 		// Cleaning period setup
 		int cleaningPeriod = 10; // (Seconds)
@@ -52,6 +52,9 @@ public class ServiceAgent {
 			Socket connectionSocket = agentSocket.accept();
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			
+			// Open the blockchain database
+			db = factory.open(new File("blockchain"), options);
+			
 			// Received a block from the miner
 			if (Util.socketClientName(connectionSocket).equals("miner")) {
 				System.out.println("Received a block from the miner");
@@ -66,26 +69,34 @@ public class ServiceAgent {
 				// If the block to be updated is not already in updatedBlocks list,
 				// get it from the database
 				Block b;
-				if (!updatedBlocks.containsKey(tl.getBlockID())) {
+				if (!updatedBlocks.containsKey(new String(tl.getBlockID()))) {
+					System.out.println("Block not in updatedBlocks list");
 					b = Util.deserialize(db.get(tl.getBlockID()));
 				} else {
-					b = updatedBlocks.get(tl.getBlockID());
+					System.out.println("Block already in updatedBlocks list");
+					b = updatedBlocks.get(new String(tl.getBlockID()));
 				}
+				System.out.println("Block size before = " + Util.serialize(b).length);
 				
 				// Find the transaction to be removed
 				for (Transaction t: b.getTransactions()) {
 					if (Arrays.equals(t.getTid(), tl.getTransactionID())) {
 						// Delete everything in this transaction except for the transaction ID and previous transaction ID
+						System.out.println("Size before = " + Util.serialize(t).length);
 						t.clearTransaction();
+						System.out.println("Size after = " + Util.serialize(t).length);
 						break;
 					}
 				}
-				updatedBlocks.put(b.getBlockId(), b);
+				System.out.println("Block size after = " + Util.serialize(b).length);
+				updatedBlocks.put(new String(b.getBlockId()), b);
 			} else {
 				// Should not get here
 				System.out.println("Received connection from a node that is not a miner or search agent");
 				System.exit(0);
 			}
+			
+			db.close();
 		}
 	}
 	
@@ -107,9 +118,11 @@ public class ServiceAgent {
 		System.out.println("Transmitted updated blocks");
 		
 		// Write the updated blocks to the database
+		db = factory.open(new File("blockchain"), options);
 		for (Block b : updatedBlocks.values()) {
 			db.put(b.getBlockId(), Util.serialize(b));
 		}
+		db.close();
 		
 		// Clear the list of updated blocks
 		updatedBlocks.clear();
