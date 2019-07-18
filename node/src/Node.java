@@ -49,7 +49,7 @@ public class Node {
 	private static int mode;
 	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
-		mode = 0; // 0 == create blockchain. 1 == remove transactions.
+		mode = 1; // 0 == create blockchain. 1 == remove transactions.
 		
 		System.out.println("Node is running");
 		
@@ -75,6 +75,7 @@ public class Node {
 			}
 			iterator.close();
 		}
+		db.close();
 
 		// Load the RSA key pair from the environment variables
 		publicKey = Util.stringToPublicKey(System.getenv("PUB_KEY"));
@@ -98,9 +99,7 @@ public class Node {
 			}
 		};
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.MILLISECONDS); // How often the node should create a transaction
-		
-		
+		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.MILLISECONDS); // How often the node should create a transaction		
 		
 		// Socket setup
 		ServerSocket nodeSocket = new ServerSocket(8000);
@@ -118,9 +117,16 @@ public class Node {
 				}
 			}
 			
+			db = factory.open(new File("blockchain"), options);
+			if (db.get(b.getBlockId()) == null) {
+				System.out.println("Received new block from the miner");
+			} else {
+				System.out.println("Received updated block from the miner");
+			}
+			
 			// Add the block to this node's blockchain database
 			db.put(b.getBlockId(), Util.serialize(b));
-			System.out.println("Received block from the miner");
+			db.close();
 		}
 		
 	}
@@ -132,7 +138,7 @@ public class Node {
 		byte[] gv = computeGv(prevTid, true);
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
-			byte[] randomMessage = new byte[1000]; // Generate a random string
+			byte[] randomMessage = new byte[100]; // Generate a random string
 			new Random().nextBytes(randomMessage);
 			
 			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();

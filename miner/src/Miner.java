@@ -18,6 +18,7 @@ public class Miner {
 	private static int maxBlockchainSize;
 	private static int numBlocks;
 	private static DB db;
+	private static Options options;
 	
 	private static Block currentBlock;
 	private static byte[] prevTransactionId;
@@ -27,16 +28,15 @@ public class Miner {
 	private static int mode;
 
 	public static void main(String[] args) throws Exception {
-		mode = 0; // 0 == create blockchain. 1 == remove transactions.
+		mode = 1; // 0 == create blockchain. 1 == remove transactions.
 		
 		System.out.println("Miner is running");
-		maxBlockchainSize = 10;
+		maxBlockchainSize = 1;
 		numBlocks = 0;
 		
 		// LevelDB setup
-		Options options = new Options();
+		options = new Options();
 		options.createIfMissing(true);
-		db = factory.open(new File("blockchain"), options);
 		
 		// Blockchain configuration
 		currentBlock = new Block();
@@ -81,7 +81,9 @@ public class Miner {
 			currentBlockId = currentBlock.getBlockId();
 			
 			// Add the block to the blockchain
+			db = factory.open(new File("blockchain"), options);
 			db.put(currentBlockId, Util.serialize(currentBlock));
+			db.close();
 			numBlocks++;
 			
 			// Transmit the block to all nodes and agents
@@ -97,7 +99,6 @@ public class Miner {
 			if (mode == 0) {
 				if (numBlocks >= maxBlockchainSize) {
 					System.out.println("Blockchain is full");
-					db.close();
 					while (true) {
 						TimeUnit.MINUTES.sleep(1);
 					}
@@ -115,9 +116,10 @@ public class Miner {
 	private static void updateBlockchain(Socket connectionSocket) throws ClassNotFoundException, IOException{
 		ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 		
-		HashMap<byte[], Block> updatedBlocks = (HashMap<byte[], Block>) in.readObject();
-		for (byte[] blockId: updatedBlocks.keySet()) {
-			db.put(blockId, Util.serialize(updatedBlocks.get(blockId)));
+		HashMap<String, Block> updatedBlocks = (HashMap<String, Block>) in.readObject();
+		db = factory.open(new File("blockchain"), options);
+		for (Block b: updatedBlocks.values()) {
+			db.put(b.getBlockId(), Util.serialize(b));
 			
 			// Transmit this updated block to the nodes and agents
 			// (except for the agent that sent this updated block to the miner)
@@ -128,8 +130,9 @@ public class Miner {
 			//recipients.add("search_agent");
 			recipients.remove(Util.socketClientName(connectionSocket));
 			
-			transmitBlock(updatedBlocks.get(blockId), recipients);
+			transmitBlock(b, recipients);
 		}
+		db.close();
 		
 		System.out.println("Miner transmitted updated blocks");
 	}

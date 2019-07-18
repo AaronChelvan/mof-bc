@@ -34,7 +34,6 @@ public class SearchAgent {
 		// LevelDB setup
 		Options options = new Options();
 		options.createIfMissing(true);
-		db = factory.open(new File("blockchain"), options);
 		
 		// Socket setup
 		ServerSocket agentSocket = new ServerSocket(8000);
@@ -55,6 +54,8 @@ public class SearchAgent {
 				System.out.println("Something went wrong!");
 				System.exit(0);
 			}
+			
+			db = factory.open(new File("blockchain"), options);
 			
 			// If this block is already in the database, then it is an updated
 			// block which has already had its remove and summary transactions processed
@@ -117,6 +118,7 @@ public class SearchAgent {
 			
 			// Add the block to the blockchain
 			db.put(currentBlock.getBlockId(), Util.serialize(currentBlock));
+			db.close();
 		}
 	}
 	
