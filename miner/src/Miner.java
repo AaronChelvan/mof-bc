@@ -24,14 +24,10 @@ public class Miner {
 	private static byte[] prevTransactionId;
 	private static byte[] prevBlockId;
 	private static byte[] currentBlockId;
-	
-	private static int mode;
 
 	public static void main(String[] args) throws Exception {
-		mode = 1; // 0 == create blockchain. 1 == remove transactions.
-		
 		System.out.println("Miner is running");
-		maxBlockchainSize = 1;
+		maxBlockchainSize = 20;
 		numBlocks = 0;
 		
 		// LevelDB setup
@@ -96,7 +92,7 @@ public class Miner {
 			}*/
 			
 			// Wait indefinitely once the blockchain has been filled
-			if (mode == 0) {
+			if (Util.mode == 0) {
 				if (numBlocks >= maxBlockchainSize) {
 					System.out.println("Blockchain is full");
 					while (true) {

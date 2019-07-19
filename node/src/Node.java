@@ -46,11 +46,9 @@ public class Node {
 	private static PublicKey publicKey;
 	private static String gvs;
 	
-	private static int mode;
+	private static int originalNumTransactions;
 	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
-		mode = 1; // 0 == create blockchain. 1 == remove transactions.
-		
 		System.out.println("Node is running");
 		
 		// LevelDB setup
@@ -62,7 +60,7 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
-		if (mode == 1) {
+		if (Util.mode == 1) {
 			// Add all existing transactions to the myTransactions list
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
@@ -76,6 +74,7 @@ public class Node {
 			iterator.close();
 		}
 		db.close();
+		originalNumTransactions = myTransactions.size();
 
 		// Load the RSA key pair from the environment variables
 		publicKey = Util.stringToPublicKey(System.getenv("PUB_KEY"));
@@ -128,7 +127,6 @@ public class Node {
 			db.put(b.getBlockId(), Util.serialize(b));
 			db.close();
 		}
-		
 	}
 	
 	private static void sendTransaction() throws IOException, ClassNotFoundException, InvalidKeyException, NoSuchAlgorithmException, SignatureException, InterruptedException {
@@ -138,7 +136,7 @@ public class Node {
 		byte[] gv = computeGv(prevTid, true);
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
-			byte[] randomMessage = new byte[100]; // Generate a random string
+			byte[] randomMessage = new byte[Util.dataSize]; // Generate a random string
 			new Random().nextBytes(randomMessage);
 			
 			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
@@ -149,9 +147,9 @@ public class Node {
 		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
 			System.out.println("sending a remove transaction");
 			
-			// If the myTransactions list is empty, wait indefinitely
-			if (myTransactions.size() == 0) {
-				System.out.println("myTransactions is empty");
+			// Once we are done removing transactions, wait indefinitely
+			if (myTransactions.size() <= originalNumTransactions * (1-Util.removalPercentage)) {
+				System.out.println("Done sending transactions");
 				while (true) {
 					TimeUnit.MINUTES.sleep(1);
 				}
@@ -227,7 +225,7 @@ public class Node {
 			transactionTypeCounter++;
 			return TransactionType.Standard;
 		}*/
-		if (mode == 0) {
+		if (Util.mode == 0) {
 			return TransactionType.Standard;
 		} else {
 			return TransactionType.Remove;

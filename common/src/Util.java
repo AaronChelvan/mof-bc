@@ -28,6 +28,9 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 public class Util {
+	public static int mode = 0; // 0 == create blockchain. 1 == remove transactions.
+	public static int dataSize = 100; // Size of data in a standard transaction
+	public static double removalPercentage = 0.25; // Percentage of transactions that should be removed. 0.25 == 25%
 	
 	// Convert a Block object into a byte[] for storage in the DB
 	// https://stackoverflow.com/a/3736247
