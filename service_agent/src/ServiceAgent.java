@@ -12,17 +12,21 @@ import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.Options;
 
 public class ServiceAgent {
 	private static DB db;
-	private static HashMap<byte[], Block> updatedBlocks; // Key = block ID. Val = block.
+	private static Options options;
+	private static HashMap<String, Block> updatedBlocks; // Key = block ID. Val = block.
+	private static Lock updatedBlocksLock;
 	
 	public static void main(String[] args) throws IOException, ClassNotFoundException {
 		// LevelDB setup
-		Options options = new Options();
+		options = new Options();
 		options.createIfMissing(true);
 		db = factory.open(new File("blockchain"), options);
 		
@@ -30,10 +34,11 @@ public class ServiceAgent {
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
 		// A list of blocks that have been updated over the last cleaning period
-		updatedBlocks = new HashMap<byte[], Block>(); // Key = block ID. Val = block.
+		updatedBlocks = new HashMap<String, Block>(); // Key = block ID. Val = block.
+		updatedBlocksLock = new ReentrantLock(); // A lock for accessing updatedBlocks
 		
 		// Cleaning period setup
-		int cleaningPeriod = 10; // (Seconds)
+		int cleaningPeriod = Util.cleaningPeriod;
 		Runnable transmit = new Runnable() {
 			public void run() {
 				try {
@@ -50,7 +55,7 @@ public class ServiceAgent {
 		// Listen for incoming connections
 		while (true) {
 			Socket connectionSocket = agentSocket.accept();
-			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
+			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());			
 			
 			// Received a block from the miner
 			if (Util.socketClientName(connectionSocket).equals("miner")) {
@@ -66,10 +71,11 @@ public class ServiceAgent {
 				// If the block to be updated is not already in updatedBlocks list,
 				// get it from the database
 				Block b;
-				if (!updatedBlocks.containsKey(tl.getBlockID())) {
+				updatedBlocksLock.lock();
+				if (!updatedBlocks.containsKey(new String(tl.getBlockID()))) {
 					b = Util.deserialize(db.get(tl.getBlockID()));
 				} else {
-					b = updatedBlocks.get(tl.getBlockID());
+					b = updatedBlocks.get(new String(tl.getBlockID()));
 				}
 				
 				// Find the transaction to be removed
@@ -80,7 +86,8 @@ public class ServiceAgent {
 						break;
 					}
 				}
-				updatedBlocks.put(b.getBlockId(), b);
+				updatedBlocks.put(new String(b.getBlockId()), b);
+				updatedBlocksLock.unlock();
 			} else {
 				// Should not get here
 				System.out.println("Received connection from a node that is not a miner or search agent");
@@ -90,6 +97,7 @@ public class ServiceAgent {
 	}
 	
 	private static void transmitUpdatedBlocks() throws UnknownHostException, IOException {
+		updatedBlocksLock.lock();
 		if (updatedBlocks.size() == 0) {
 			System.out.println("No blocks have been updated");
 			return;
@@ -113,5 +121,6 @@ public class ServiceAgent {
 		
 		// Clear the list of updated blocks
 		updatedBlocks.clear();
+		updatedBlocksLock.unlock();
 	}
 }
