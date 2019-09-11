@@ -6,6 +6,7 @@ import java.util.ArrayList;
 public class Block implements Serializable {
 
 	private static final long serialVersionUID = 1L;
+	// TODO move this to a config file
 	public static final int maxNumTransactions = 100; // Maximum number of transactions in a block
 	private ArrayList<Transaction> transactionList;
 	private byte[] blockId;

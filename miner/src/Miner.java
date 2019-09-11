@@ -63,7 +63,13 @@ public class Miner {
 		
 		//System.out.println("processing transaction");
 		Transaction t = (Transaction) in.readObject();
-		System.out.println("Received transaction = " + DatatypeConverter.printHexBinary(t.getTid()));
+		if (t.getType() == TransactionType.Standard) {
+			System.out.println("Received std tx = " + DatatypeConverter.printHexBinary(t.getTid()));
+		} else if (t.getType() == TransactionType.Remove) {
+			System.out.println("Received rmv tx = " + DatatypeConverter.printHexBinary(t.getTid()));
+		} else { // Something went wrong
+			System.exit(0);
+		}
 		
 		// Add the transaction to the block
 		currentBlock.addTransaction(t);
@@ -85,11 +91,6 @@ public class Miner {
 			// Transmit the block to all nodes and agents
 			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "search_agent");
 			transmitBlock(currentBlock, blockRecipients);
-			
-			// Checks if a key does not exist
-			/*if (db.get(bytes("qwioeiugryf")) == null) {
-				System.out.println("key does not exist");
-			}*/
 			
 			// Wait indefinitely once the blockchain has been filled
 			if (Util.mode == 0) {
@@ -115,17 +116,13 @@ public class Miner {
 		HashMap<String, Block> updatedBlocks = (HashMap<String, Block>) in.readObject();
 		db = factory.open(new File("blockchain"), options);
 		for (Block b: updatedBlocks.values()) {
+			// Add the updated block to the blockchain
 			db.put(b.getBlockId(), Util.serialize(b));
+			System.out.println("Received updated block = " + DatatypeConverter.printHexBinary(b.getBlockId()));
 			
-			// Transmit this updated block to the nodes and agents
-			// (except for the agent that sent this updated block to the miner)
+			// Transmit this updated block to the nodes
 			ArrayList<String> recipients = new ArrayList<String>(); 
-			//recipients.add("service_agent");
 			recipients.add("node1");
-			//recipients.add("node2");
-			//recipients.add("search_agent");
-			recipients.remove(Util.socketClientName(connectionSocket));
-			
 			transmitBlock(b, recipients);
 		}
 		db.close();
@@ -135,6 +132,7 @@ public class Miner {
 	
 	// Given a block and a list of recipients, transmit the block to all recipients
 	private static void transmitBlock(Block currentBlock, List<String> recipients) throws UnknownHostException, IOException {
+		System.out.println("Transmitting block = " + DatatypeConverter.printHexBinary(currentBlock.getBlockId()));
 		for (String s: recipients) {
 			// Open a connection
 			Socket clientSocket = Util.connectToServerSocket(s, 8000);

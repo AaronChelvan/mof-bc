@@ -38,7 +38,6 @@ public class Node {
 	private static DB db;
 	private static Socket clientSocket;
 	private static ObjectOutputStream output;
-	private static int transactionTypeCounter;
 	private static ArrayList<TransactionLocation> myTransactions;
 	private static byte[] prevTid;
 	
@@ -46,7 +45,7 @@ public class Node {
 	private static PublicKey publicKey;
 	private static String gvs;
 	
-	private static int originalNumTransactions;
+	private static int originalNumTransactions; // The number of transactions created during the transaction creation phase
 	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
 		System.out.println("Node is running");
@@ -66,7 +65,7 @@ public class Node {
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
 				byte[] blockId = iterator.peekNext().getKey();
 				Block b = Util.deserialize(iterator.peekNext().getValue());
-				
+
 				for (Transaction t: b.getTransactions()) {
 					myTransactions.add(new TransactionLocation(blockId, t.getTid(), t.getPrevTid()));
 				}
@@ -87,7 +86,6 @@ public class Node {
 		prevTid = new byte[0];
 		
 		// Thread for sending transactions
-		transactionTypeCounter = 0;
 		Runnable sendTransactionRunnable = new Runnable() {
 			public void run() {
 				try {
@@ -108,13 +106,6 @@ public class Node {
 			Socket connectionSocket = nodeSocket.accept();
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			Block b = (Block) in.readObject();
-			
-			// Scan the block for transactions created by this node and add their locations to "myTransactions"
-			for (Transaction t: b.getTransactions()) {
-				if (Arrays.equals(computeGv(t.getPrevTid(), true), t.getGv()) && t.getType() == TransactionType.Standard) {
-					myTransactions.add(new TransactionLocation(b.getBlockId(), t.getTid(), t.getPrevTid()));
-				}
-			}
 			
 			db = factory.open(new File("blockchain"), options);
 			if (db.get(b.getBlockId()) == null) {
@@ -180,9 +171,9 @@ public class Node {
 		// Send the transaction to the miner
 		if (toSend != null) {
 			if (toSend.getType() == TransactionType.Standard) {
-				System.out.println("Sent std tx = " +  toSend);
+				System.out.println("Sent std tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else if (toSend.getType() == TransactionType.Remove) {
-				System.out.println("Sent remove tx = " + toSend);
+				System.out.println("Sent remove tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else {
 				System.out.println("Invalid transaction type");
 			}
@@ -218,13 +209,6 @@ public class Node {
 	// Call this function to determine what type of transaction the node should create next.
 	// Can be modified to increase how often a remove transaction is created, etc.
 	private static TransactionType getNextTransactionType() {
-		/*if (transactionTypeCounter >= 2) {
-			transactionTypeCounter = 0;
-			return TransactionType.Remove;
-		} else {
-			transactionTypeCounter++;
-			return TransactionType.Standard;
-		}*/
 		if (Util.mode == 0) {
 			return TransactionType.Standard;
 		} else {

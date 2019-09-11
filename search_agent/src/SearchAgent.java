@@ -28,7 +28,6 @@ import org.iq80.leveldb.Options;
 
 public class SearchAgent {
 	private static DB db; // LevelDB database used for storing the blockchain
-	private static HashMap<String, Block> updatedBlocks; // Key = block ID. Val = block.
 	
 	public static void main(String[] args) throws IOException, ClassNotFoundException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		// LevelDB setup
@@ -38,10 +37,7 @@ public class SearchAgent {
 		// Socket setup
 		ServerSocket agentSocket = new ServerSocket(8000);
 		
-		// A list of blocks that have been updated over the last cleaning period
-		updatedBlocks = new HashMap<String, Block>(); // Key = block ID. Val = block.
-		
-		System.out.println("Setup complete");
+		System.out.println("Setup complete");	
 		
 		// Listen for incoming connections
 		while (true) {
@@ -61,15 +57,19 @@ public class SearchAgent {
 			// block which has already had its remove and summary transactions processed
 			if (db.get(currentBlock.getBlockId()) == null) {
 				System.out.println("Received new block from miner");
+				
+				// Add the block to the blockchain
+				db.put(currentBlock.getBlockId(), Util.serialize(currentBlock));
+				
 				// Scan the block for remove transactions & summary transactions
 				for (Transaction t: currentBlock.getTransactions()) {
 					if (t.getType() == TransactionType.Remove) {
 						// Extract the location of the transaction to be removed
 						HashMap<String, byte[]> transactionData = t.getData();
 						TransactionLocation tl = Util.deserialize(transactionData.get("location"));
-						System.out.println("Found remove transaction = " + DatatypeConverter.printHexBinary(tl.getTransactionID()));
+						System.out.println("Found transaction to remove = " + DatatypeConverter.printHexBinary(tl.getTransactionID()));
 						
-						// TODO - Verify if the creator of this transaction is the same node
+						// Verify if the creator of this transaction is the same node
 						// that created the transaction that is to be removed
 						Block toRemoveBlock = Util.deserialize(db.get(tl.getBlockID()));
 						Transaction toRemove = null;
@@ -94,8 +94,7 @@ public class SearchAgent {
 						if (!Util.verify(pubKey, transactionData.get("sigMessage"), transactionData.get("sig"))) {
 							System.out.println("Failed 2nd verification check");
 							continue;
-						}
-						System.out.println("Passed verification checks");
+						}	
 						
 						// Send the location to the service agent
 						// Open a connection
@@ -109,15 +108,15 @@ public class SearchAgent {
 						clientSocket.close();
 						
 					} else if (t.getType() == TransactionType.Summary) {
-						// TODO			
+						// TODO
+						System.exit(0);
 					}
 				}
-			} else {
+			} else { // This should not happen
 				System.out.println("Received updated block");
+				System.exit(0);
 			}
 			
-			// Add the block to the blockchain
-			db.put(currentBlock.getBlockId(), Util.serialize(currentBlock));
 			db.close();
 		}
 	}
