@@ -38,7 +38,7 @@ public class ServiceAgent {
 		updatedBlocksLock = new ReentrantLock(); // A lock for accessing updatedBlocks
 		
 		// Cleaning period setup
-		int cleaningPeriod = Util.cleaningPeriod;
+		int cleaningPeriod = Config.cleaningPeriod;
 		Runnable transmit = new Runnable() {
 			public void run() {
 				try {

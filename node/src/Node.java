@@ -59,7 +59,7 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
-		if (Util.mode == 1) {
+		if (Config.mode == 1) {
 			// Add all existing transactions to the myTransactions list
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
@@ -127,7 +127,7 @@ public class Node {
 		byte[] gv = computeGv(prevTid, true);
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
-			byte[] randomMessage = new byte[Util.dataSize]; // Generate a random string
+			byte[] randomMessage = new byte[Config.dataSize]; // Generate a random string
 			new Random().nextBytes(randomMessage);
 			
 			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
@@ -139,7 +139,7 @@ public class Node {
 			System.out.println("sending a remove transaction");
 			
 			// Once we are done removing transactions, wait indefinitely
-			if (myTransactions.size() <= originalNumTransactions * (1-Util.removalPercentage)) {
+			if (myTransactions.size() <= originalNumTransactions * (1-Config.removalPercentage)) {
 				System.out.println("Done sending transactions");
 				while (true) {
 					TimeUnit.MINUTES.sleep(1);
@@ -209,7 +209,7 @@ public class Node {
 	// Call this function to determine what type of transaction the node should create next.
 	// Can be modified to increase how often a remove transaction is created, etc.
 	private static TransactionType getNextTransactionType() {
-		if (Util.mode == 0) {
+		if (Config.mode == 0) {
 			return TransactionType.Standard;
 		} else {
 			return TransactionType.Remove;

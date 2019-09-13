@@ -6,14 +6,12 @@ import java.util.ArrayList;
 public class Block implements Serializable {
 
 	private static final long serialVersionUID = 1L;
-	// TODO move this to a config file
-	public static final int maxNumTransactions = 100; // Maximum number of transactions in a block
 	private ArrayList<Transaction> transactionList;
 	private byte[] blockId;
 	private byte[] prevBlockId;
 	
 	public Block() {
-		transactionList = new ArrayList<Transaction>(maxNumTransactions);
+		transactionList = new ArrayList<Transaction>(Config.maxNumTransactions);
 		blockId = null;
 		prevBlockId = null;
 	}
@@ -44,7 +42,7 @@ public class Block implements Serializable {
 	}
 
 	public boolean isFull() {
-		if (transactionList.size() == maxNumTransactions) {
+		if (transactionList.size() == Config.maxNumTransactions) {
 			return true;
 		} else {
 			return false;

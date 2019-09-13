@@ -93,7 +93,7 @@ public class Miner {
 			transmitBlock(currentBlock, blockRecipients);
 			
 			// Wait indefinitely once the blockchain has been filled
-			if (Util.mode == 0) {
+			if (Config.mode == 0) {
 				if (numBlocks >= maxBlockchainSize) {
 					System.out.println("Blockchain is full");
 					while (true) {
