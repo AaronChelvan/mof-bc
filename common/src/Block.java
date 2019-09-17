@@ -11,7 +11,7 @@ public class Block implements Serializable {
 	private byte[] prevBlockId;
 	
 	public Block() {
-		transactionList = new ArrayList<Transaction>(Config.maxNumTransactions);
+		transactionList = new ArrayList<Transaction>(Config.numTransactionsInBlock);
 		blockId = null;
 		prevBlockId = null;
 	}
@@ -42,7 +42,7 @@ public class Block implements Serializable {
 	}
 
 	public boolean isFull() {
-		if (transactionList.size() == Config.maxNumTransactions) {
+		if (transactionList.size() == Config.numTransactionsInBlock) {
 			return true;
 		} else {
 			return false;

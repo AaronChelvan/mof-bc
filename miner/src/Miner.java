@@ -15,7 +15,6 @@ import static org.fusesource.leveldbjni.JniDBFactory.*;
 import java.io.*;
 
 public class Miner {
-	private static int maxBlockchainSize;
 	private static int numBlocks;
 	private static DB db;
 	private static Options options;
@@ -26,7 +25,6 @@ public class Miner {
 
 	public static void main(String[] args) throws Exception {
 		System.out.println("Miner is running");
-		maxBlockchainSize = 20;
 		numBlocks = 0;
 		
 		// LevelDB setup
@@ -48,9 +46,11 @@ public class Miner {
 			if (Util.socketClientName(connectionSocket).equals("node")) { // Received a transaction
 				//System.out.println("Node connected to miner");
 				processTransaction(connectionSocket);
-			} else if (Util.socketClientName(connectionSocket).equals("service_agent") ||
-			Util.socketClientName(connectionSocket).equals("summary_manager_agent")) { // Received an updated block
+			} else if (Util.socketClientName(connectionSocket).equals("service_agent")) { // Received an updated block
 				System.out.println("Service agent connected to miner");
+				updateBlockchain(connectionSocket);
+			} else if (Util.socketClientName(connectionSocket).equals("summary_manager_agent")) {
+				System.out.println("Summary manager agent connected to miner");
 				updateBlockchain(connectionSocket);
 			}
 		}
@@ -95,7 +95,7 @@ public class Miner {
 			
 			// Wait indefinitely once the blockchain has been filled
 			if (Config.mode == 0) {
-				if (numBlocks >= maxBlockchainSize) {
+				if (numBlocks >= Config.maxBlockchainSize) {
 					System.out.println("Blockchain is full");
 					while (true) {
 						TimeUnit.MINUTES.sleep(1);
