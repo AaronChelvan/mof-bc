@@ -117,6 +117,7 @@ public class SummaryManagerAgent {
 		// Close the connection
 		clientSocket.close();
 		System.out.println("Transmitted updated blocks");
+		System.out.println("Number of updated blocks = " + updatedBlocks.size());
 		
 		// Write the updated blocks to the database
 		for (Block b : updatedBlocks.values()) {

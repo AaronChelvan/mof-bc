@@ -53,6 +53,7 @@ public class Util {
 		String minerIP = InetAddress.getByName("miner").getHostAddress();
 		String searchAgentIP = InetAddress.getByName("search_agent").getHostAddress();
 		String serviceAgentIP = InetAddress.getByName("service_agent").getHostAddress();
+		String summaryManagerAgentIP = InetAddress.getByName("summary_manager_agent").getHostAddress();
 		
 		// Get the IP address of the client
 		String clientIP = s.getRemoteSocketAddress().toString();
@@ -67,6 +68,8 @@ public class Util {
 			return "search_agent";
 		} else if (clientIP.equals(serviceAgentIP)){
 			return "service_agent";
+		} else if (clientIP.equals(summaryManagerAgentIP)){
+			return "summary_manager_agent";
 		} else {
 			return "";
 		}

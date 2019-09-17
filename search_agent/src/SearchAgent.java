@@ -116,7 +116,7 @@ public class SearchAgent {
 						ArrayList<byte[]> prevTids = Util.deserialize(transactionData.get("prevTids"));
 						ArrayList<TransactionLocation> validLocations = new ArrayList<TransactionLocation>();
 						
-						// TODO - verify that the creator of this summary transaction also created all of the transactions being summarized
+						// Verify that the creator of this summary transaction also created all of the transactions being summarized
 						for (int i = 0; i < transactionData.size(); i++) {
 							// Find the block containing this transaction
 							TransactionLocation tl = locations.get(i);

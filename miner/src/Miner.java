@@ -46,10 +46,10 @@ public class Miner {
 			if (Util.socketClientName(connectionSocket).equals("node")) { // Received a transaction
 				//System.out.println("Node connected to miner");
 				processTransaction(connectionSocket);
-			} else if (Util.socketClientName(connectionSocket).equals("service_agent")) { // Received an updated block
+			} else if (Util.socketClientName(connectionSocket).equals("service_agent")) { // Received updated blocks
 				System.out.println("Service agent connected to miner");
 				updateBlockchain(connectionSocket);
-			} else if (Util.socketClientName(connectionSocket).equals("summary_manager_agent")) {
+			} else if (Util.socketClientName(connectionSocket).equals("summary_manager_agent")) { // Received updated blocks
 				System.out.println("Summary manager agent connected to miner");
 				updateBlockchain(connectionSocket);
 			}
