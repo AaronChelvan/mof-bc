@@ -59,7 +59,8 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
-		if (Config.mode == 1) {
+		// If we are removing or summarizing transactions, populate myTransactions with a list of all transactions created by this node
+		if (Config.mode == 1 || Config.mode == 2) {
 			// Add all existing transactions to the myTransactions list
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
@@ -176,7 +177,7 @@ public class Node {
 			
 			// Contains the list of transactions to summarize
 			ArrayList<TransactionLocation> transactionsToSummarize = new ArrayList<TransactionLocation>();
-			
+			ArrayList<byte[]> prevTids = new ArrayList<byte[]>();
 			// Pick some random transactions to summarize
 			for (int i = 0; i < Config.numTransactionsInSummary; i++) {
 				// Pick a transaction at random
@@ -185,6 +186,8 @@ public class Node {
 				// Remove that transaction location from the list
 				myTransactions.remove(tl);
 				transactionsToSummarize.add(tl);
+				
+				prevTids.add(computeHash(tl.getPrevTransactionID()));
 				
 				if (myTransactions.size() == 0) {
 					break;
@@ -195,7 +198,8 @@ public class Node {
 			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
 			transactionData.put("locations", Util.serialize(transactionsToSummarize));
 			transactionData.put("pubKey", Util.serialize(publicKey));
-			transactionData.put("unsignedGv", computeGv(tl.getPrevTransactionID(), false));
+			transactionData.put("gvsHash", computeHash(gvs.getBytes()));
+			transactionData.put("prevTids", Util.serialize(prevTids));
 			byte[] sigMessage = new byte[20]; // Generate a signature message
 			new Random().nextBytes(sigMessage);
 			transactionData.put("sigMessage", sigMessage);
@@ -232,22 +236,26 @@ public class Node {
 		
 	}
 	
+	// Compute a GV
 	private static byte[] computeGv(byte[] prevTid, boolean signed) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		MessageDigest md = null;
-		try {
-			md = MessageDigest.getInstance("SHA-256");
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
-		md.update(gvs.getBytes());
-		md.update(prevTid);
+		md = MessageDigest.getInstance("SHA-256");
+		md.update(computeHash(gvs.getBytes()));
+		md.update(computeHash(prevTid));
 		
 		if (signed == true) {
 			return Util.sign(privateKey, md.digest());
 		} else { // unsigned
 			return md.digest();
 		}
-		
+	}
+	
+	// Given an input, return the SHA-256 hash of it
+	private static byte[] computeHash(byte[] input) throws NoSuchAlgorithmException {
+		MessageDigest md = null;
+		md = MessageDigest.getInstance("SHA-256");
+		md.update(input);
+		return md.digest();
 	}
 
 	// Call this function to determine what type of transaction the node should create next.

@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.SignatureException;
@@ -111,6 +112,8 @@ public class SearchAgent {
 						// Extract the locations of the transactions to be summarized
 						HashMap<String, byte[]> transactionData = t.getData();
 						ArrayList<TransactionLocation> locations = Util.deserialize(transactionData.get("locations"));
+						byte[] gvsHash = transactionData.get("gvsHash");
+						ArrayList<byte[]> prevTids = Util.deserialize(transactionData.get("prevTids"));
 						ArrayList<TransactionLocation> validLocations = new ArrayList<TransactionLocation>();
 						
 						// TODO - verify that the creator of this summary transaction also created all of the transactions being summarized
@@ -131,9 +134,19 @@ public class SearchAgent {
 								System.exit(0);
 							}
 							
+							byte[] prevTid = prevTids.get(i);
+							
+							// Compute the unsigned GV
+							MessageDigest md = null;
+							md = MessageDigest.getInstance("SHA-256");
+							md.update(gvsHash);
+							md.update(prevTid);
+							byte[] unsignedGV = md.digest();
+							
 							// Check the GV is valid
 							PublicKey pubKey = Util.deserialize(transactionData.get("pubKey"));
-							if (!Util.verify(pubKey, transactionData.get("unsignedGv"), toRemove.getGv())) {
+							
+							if (!Util.verify(pubKey, unsignedGV, toRemove.getGv())) {
 								System.out.println("Failed 1st verification check");
 								continue;
 							}
