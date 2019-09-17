@@ -163,6 +163,47 @@ public class Node {
 			
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Remove);
 			
+		} else if (nextTransactionType == TransactionType.Summary) {
+			System.out.println("Sending a summary transaction");
+			
+			// If there are no more transactions to summarize, wait indefinitely
+			if (myTransactions.size() == 0) {
+				System.out.println("Done sending transactions");
+				while (true) {
+					TimeUnit.MINUTES.sleep(1);
+				}
+			}
+			
+			// Contains the list of transactions to summarize
+			ArrayList<TransactionLocation> transactionsToSummarize = new ArrayList<TransactionLocation>();
+			
+			// Pick some random transactions to summarize
+			for (int i = 0; i < Config.numTransactionsInSummary; i++) {
+				// Pick a transaction at random
+				TransactionLocation tl = myTransactions.get(new Random().nextInt(myTransactions.size()));
+				
+				// Remove that transaction location from the list
+				myTransactions.remove(tl);
+				transactionsToSummarize.add(tl);
+				
+				if (myTransactions.size() == 0) {
+					break;
+				}
+			}
+			
+			// Create a summary transaction
+			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
+			transactionData.put("locations", Util.serialize(transactionsToSummarize));
+			transactionData.put("pubKey", Util.serialize(publicKey));
+			transactionData.put("unsignedGv", computeGv(tl.getPrevTransactionID(), false));
+			byte[] sigMessage = new byte[20]; // Generate a signature message
+			new Random().nextBytes(sigMessage);
+			transactionData.put("sigMessage", sigMessage);
+			transactionData.put("sig", Util.sign(privateKey, sigMessage));
+			// TODO - Add summary time, transorder, list of hash(GVS), and list of hash(P.T.ID)
+			
+			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Summary);
+
 		} else { // Invalid transaction type
 			System.out.println("Invalid transaction type");
 			System.exit(0);
@@ -174,8 +215,11 @@ public class Node {
 				System.out.println("Sent std tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else if (toSend.getType() == TransactionType.Remove) {
 				System.out.println("Sent remove tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
+			} else if (toSend.getType() == TransactionType.Summary) {
+				System.out.println("Sent summary tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else {
 				System.out.println("Invalid transaction type");
+				System.exit(0);
 			}
 			
 			clientSocket = Util.connectToServerSocket("miner", 8000);
@@ -211,8 +255,14 @@ public class Node {
 	private static TransactionType getNextTransactionType() {
 		if (Config.mode == 0) {
 			return TransactionType.Standard;
-		} else {
+		} else if (Config.mode == 1) {
 			return TransactionType.Remove;
+		} else if (Config.mode == 2){
+			return TransactionType.Summary;
+		} else {
+			System.out.println("Mode is invalid");
+			System.exit(0);
+			return TransactionType.Standard;
 		}
 	}
 

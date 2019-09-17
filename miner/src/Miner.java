@@ -21,7 +21,6 @@ public class Miner {
 	private static Options options;
 	
 	private static Block currentBlock;
-	private static byte[] prevTransactionId;
 	private static byte[] prevBlockId;
 	private static byte[] currentBlockId;
 
@@ -36,7 +35,6 @@ public class Miner {
 		
 		// Blockchain configuration
 		currentBlock = new Block();
-		prevTransactionId = new byte[0];
 		prevBlockId = new byte[0];
 		currentBlockId = new byte[0];
 		
@@ -50,7 +48,8 @@ public class Miner {
 			if (Util.socketClientName(connectionSocket).equals("node")) { // Received a transaction
 				//System.out.println("Node connected to miner");
 				processTransaction(connectionSocket);
-			} else if (Util.socketClientName(connectionSocket).equals("service_agent")) { // Received an updated block
+			} else if (Util.socketClientName(connectionSocket).equals("service_agent") ||
+			Util.socketClientName(connectionSocket).equals("summary_manager_agent")) { // Received an updated block
 				System.out.println("Service agent connected to miner");
 				updateBlockchain(connectionSocket);
 			}
@@ -67,6 +66,8 @@ public class Miner {
 			System.out.println("Received std tx = " + DatatypeConverter.printHexBinary(t.getTid()));
 		} else if (t.getType() == TransactionType.Remove) {
 			System.out.println("Received rmv tx = " + DatatypeConverter.printHexBinary(t.getTid()));
+		} else if (t.getType() == TransactionType.Summary) {
+			System.out.println("Received smy tx = " + DatatypeConverter.printHexBinary(t.getTid()));
 		} else { // Something went wrong
 			System.exit(0);
 		}
@@ -89,7 +90,7 @@ public class Miner {
 			numBlocks++;
 			
 			// Transmit the block to all nodes and agents
-			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "search_agent");
+			List<String> blockRecipients = Arrays.asList("service_agent", "node1", "search_agent", "summary_manager_agent");
 			transmitBlock(currentBlock, blockRecipients);
 			
 			// Wait indefinitely once the blockchain has been filled

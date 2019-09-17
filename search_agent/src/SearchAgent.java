@@ -108,8 +108,55 @@ public class SearchAgent {
 						clientSocket.close();
 						
 					} else if (t.getType() == TransactionType.Summary) {
-						// TODO
-						System.exit(0);
+						// Extract the locations of the transactions to be summarized
+						HashMap<String, byte[]> transactionData = t.getData();
+						ArrayList<TransactionLocation> locations = Util.deserialize(transactionData.get("locations"));
+						ArrayList<TransactionLocation> validLocations = new ArrayList<TransactionLocation>();
+						
+						// TODO - verify that the creator of this summary transaction also created all of the transactions being summarized
+						for (int i = 0; i < transactionData.size(); i++) {
+							// Find the block containing this transaction
+							TransactionLocation tl = locations.get(i);
+							Block toRemoveBlock = Util.deserialize(db.get(tl.getBlockID()));
+							Transaction toRemove = null;
+							for (Transaction t2: toRemoveBlock.getTransactions()) {
+								if (Arrays.equals(t2.getTid(), tl.getTransactionID())) {
+									toRemove = t2;
+									break;
+								}
+							}
+							
+							if (toRemove == null) {
+								System.out.println("Something went wrong");
+								System.exit(0);
+							}
+							
+							// Check the GV is valid
+							PublicKey pubKey = Util.deserialize(transactionData.get("pubKey"));
+							if (!Util.verify(pubKey, transactionData.get("unsignedGv"), toRemove.getGv())) {
+								System.out.println("Failed 1st verification check");
+								continue;
+							}
+							
+							// Check that the signature is valid
+							if (!Util.verify(pubKey, transactionData.get("sigMessage"), transactionData.get("sig"))) {
+								System.out.println("Failed 2nd verification check");
+								continue;
+							}
+							validLocations.add(tl);
+						}
+						
+						
+						// Send the locations to the summary manager agent
+						// Open a connection
+						Socket clientSocket = Util.connectToServerSocket("summary_manager_agent", 8000);
+						
+						// Transmit the block
+						ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+						output.writeObject(validLocations);
+						
+						// Close the connection
+						clientSocket.close();
 					}
 				}
 			} else { // This should not happen

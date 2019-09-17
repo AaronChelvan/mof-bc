@@ -28,3 +28,10 @@ services:
       dockerfile: service_agent/Dockerfile
     volumes:
       - ./blockchain_copies/service_agent_blockchain:/usr/src/myapp/blockchain
+  summary_manager_agent:
+    build:
+      context: .
+      dockerfile: summary_manager_agent/Dockerfile
+    volumes:
+      - ./blockchain_copies/summary_manager_agent_blockchain:/usr/src/myapp/blockchain
+
