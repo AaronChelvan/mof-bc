@@ -59,7 +59,8 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
-		if (Config.mode == 1) {
+		// If we are removing or summarizing transactions, populate myTransactions with a list of all transactions created by this node
+		if (Config.mode == 1 || Config.mode == 2) {
 			// Add all existing transactions to the myTransactions list
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
@@ -163,6 +164,50 @@ public class Node {
 			
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Remove);
 			
+		} else if (nextTransactionType == TransactionType.Summary) {
+			System.out.println("Sending a summary transaction");
+			
+			// If there are no more transactions to summarize, wait indefinitely
+			if (myTransactions.size() == 0) {
+				System.out.println("Done sending transactions");
+				while (true) {
+					TimeUnit.MINUTES.sleep(1);
+				}
+			}
+			
+			// Contains the list of transactions to summarize
+			ArrayList<TransactionLocation> transactionsToSummarize = new ArrayList<TransactionLocation>();
+			ArrayList<byte[]> prevTids = new ArrayList<byte[]>();
+			// Pick some random transactions to summarize
+			for (int i = 0; i < Config.numTransactionsInSummary; i++) {
+				// Pick a transaction at random
+				TransactionLocation tl = myTransactions.get(new Random().nextInt(myTransactions.size()));
+				
+				// Remove that transaction location from the list
+				myTransactions.remove(tl);
+				transactionsToSummarize.add(tl);
+				
+				prevTids.add(computeHash(tl.getPrevTransactionID()));
+				
+				if (myTransactions.size() == 0) {
+					break;
+				}
+			}
+			
+			// Create a summary transaction
+			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
+			transactionData.put("locations", Util.serialize(transactionsToSummarize));
+			transactionData.put("pubKey", Util.serialize(publicKey));
+			transactionData.put("gvsHash", computeHash(gvs.getBytes()));
+			transactionData.put("prevTids", Util.serialize(prevTids));
+			byte[] sigMessage = new byte[20]; // Generate a signature message
+			new Random().nextBytes(sigMessage);
+			transactionData.put("sigMessage", sigMessage);
+			transactionData.put("sig", Util.sign(privateKey, sigMessage));
+			// TODO - Add summary time, transorder, list of hash(GVS), and list of hash(P.T.ID)
+			
+			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Summary);
+
 		} else { // Invalid transaction type
 			System.out.println("Invalid transaction type");
 			System.exit(0);
@@ -174,8 +219,11 @@ public class Node {
 				System.out.println("Sent std tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else if (toSend.getType() == TransactionType.Remove) {
 				System.out.println("Sent remove tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
+			} else if (toSend.getType() == TransactionType.Summary) {
+				System.out.println("Sent summary tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else {
 				System.out.println("Invalid transaction type");
+				System.exit(0);
 			}
 			
 			clientSocket = Util.connectToServerSocket("miner", 8000);
@@ -188,22 +236,26 @@ public class Node {
 		
 	}
 	
+	// Compute a GV
 	private static byte[] computeGv(byte[] prevTid, boolean signed) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		MessageDigest md = null;
-		try {
-			md = MessageDigest.getInstance("SHA-256");
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
-		md.update(gvs.getBytes());
-		md.update(prevTid);
+		md = MessageDigest.getInstance("SHA-256");
+		md.update(computeHash(gvs.getBytes()));
+		md.update(computeHash(prevTid));
 		
 		if (signed == true) {
 			return Util.sign(privateKey, md.digest());
 		} else { // unsigned
 			return md.digest();
 		}
-		
+	}
+	
+	// Given an input, return the SHA-256 hash of it
+	private static byte[] computeHash(byte[] input) throws NoSuchAlgorithmException {
+		MessageDigest md = null;
+		md = MessageDigest.getInstance("SHA-256");
+		md.update(input);
+		return md.digest();
 	}
 
 	// Call this function to determine what type of transaction the node should create next.
@@ -211,8 +263,14 @@ public class Node {
 	private static TransactionType getNextTransactionType() {
 		if (Config.mode == 0) {
 			return TransactionType.Standard;
-		} else {
+		} else if (Config.mode == 1) {
 			return TransactionType.Remove;
+		} else if (Config.mode == 2){
+			return TransactionType.Summary;
+		} else {
+			System.out.println("Mode is invalid");
+			System.exit(0);
+			return TransactionType.Standard;
 		}
 	}
 

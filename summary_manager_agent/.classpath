@@ -2,7 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/home/aaron/mof-bc/search_agent/src/leveldbjni-all-1.8.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/common"/>
+	<classpathentry kind="lib" path="/home/aaron/mof-bc/summary_manager_agent/src/leveldbjni-all-1.8.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
