@@ -117,7 +117,7 @@ public class SearchAgent {
 						ArrayList<TransactionLocation> validLocations = new ArrayList<TransactionLocation>();
 						
 						// Verify that the creator of this summary transaction also created all of the transactions being summarized
-						for (int i = 0; i < transactionData.size(); i++) {
+						for (int i = 0; i < locations.size(); i++) {
 							// Find the block containing this transaction
 							TransactionLocation tl = locations.get(i);
 							Block toRemoveBlock = Util.deserialize(db.get(tl.getBlockID()));
