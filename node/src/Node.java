@@ -34,6 +34,8 @@ import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class Node {
 	private static DB db;
 	private static Socket clientSocket;
@@ -47,6 +49,8 @@ public class Node {
 	
 	private static int originalNumTransactions; // The number of transactions created during the transaction creation phase
 	
+	private static ObjectMapper objectMapper;
+	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
 		System.out.println("Node is running");
 		
@@ -59,13 +63,23 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
+		// ObjectMapper for converting objects to JSON strings, and vice versa
+		objectMapper = new ObjectMapper();
+		
 		// If we are removing or summarizing transactions, populate myTransactions with a list of all transactions created by this node
 		if (Config.mode == 1 || Config.mode == 2) {
 			// Add all existing transactions to the myTransactions list
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
 				byte[] blockId = iterator.peekNext().getKey();
-				Block b = Util.deserialize(iterator.peekNext().getValue());
+				Block b;
+				if (Config.jsonSerialization == true) {
+					// TODO - how to read transaction objects within the block object
+					b = objectMapper.readValue(iterator.peekNext().getValue(), Block.class);
+				} else {
+					b = Util.deserialize(iterator.peekNext().getValue());
+				}
+				
 
 				for (Transaction t: b.getTransactions()) {
 					myTransactions.add(new TransactionLocation(blockId, t.getTid(), t.getPrevTid()));
@@ -116,7 +130,15 @@ public class Node {
 			}
 			
 			// Add the block to this node's blockchain database
-			db.put(b.getBlockId(), Util.serialize(b));
+			if (Config.jsonSerialization == true) {
+				// Convert the block to JSON 
+				String jsonStr = objectMapper.writeValueAsString(b); 
+	            System.out.println(jsonStr); 
+	            db.put(b.getBlockId(), jsonStr.getBytes());
+			} else {
+				db.put(b.getBlockId(), Util.serialize(b));
+			}
+			
 			db.close();
 		}
 	}
