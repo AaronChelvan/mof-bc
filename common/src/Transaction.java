@@ -27,12 +27,25 @@ public class Transaction implements Serializable {
 		this.setTid();
 	}
 	
+	public Transaction() {
+		this.data = null;
+		this.gv = null;
+		this.tid = null;
+		this.prevTid = null;
+		this.type = null;
+		this.timestamp = null;
+	}
+	
 	public HashMap<String, byte[]> getData() {
 		return data;
 	}
 	
 	public byte[] getTid() {
 		return tid;
+	}
+	
+	public String getTimestamp() {
+		return timestamp;
 	}
 	
 	// Compute the transaction ID by hashing the contents of the transaction
@@ -51,6 +64,10 @@ public class Transaction implements Serializable {
 		tid = md.digest();
 	}
 	
+	public void setTid(byte[] tid) {
+		this.tid = tid;
+	}
+	
 	public byte[] getPrevTid() {
 		return prevTid;
 	}
@@ -65,6 +82,22 @@ public class Transaction implements Serializable {
 	
 	public byte[] getGv() {
 		return gv;
+	}
+	
+	public void setGv(byte[] gv) {
+		this.gv = gv;
+	}
+	
+	public void setTimestamp(String timestamp) {
+		this.timestamp = timestamp;
+	}
+	
+	public void setType(TransactionType t) {
+		this.type = t;
+	}
+	
+	public void setData(HashMap<String, byte[]> data) {
+		this.data = data;
 	}
 
 	public void clearTransaction() {

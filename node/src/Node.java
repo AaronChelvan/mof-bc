@@ -34,7 +34,15 @@ import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 public class Node {
 	private static DB db;
@@ -296,4 +304,97 @@ public class Node {
 		}
 	}
 
+	public class CustomBlockSerializer extends StdSerializer<Block> {
+
+		public CustomBlockSerializer() {
+			this(null);
+		}
+
+		public CustomBlockSerializer(Class<Block> t) {
+			super(t);
+		}
+
+		@Override
+		public void serialize(
+			Block block, JsonGenerator jsonGenerator, SerializerProvider serializer) throws IOException {
+			jsonGenerator.writeStartObject();
+			jsonGenerator.writeBinaryField("blockId", block.getBlockId());
+			jsonGenerator.writeBinaryField("prevBlockId", block.getPrevBlockId());
+			jsonGenerator.writeArrayFieldStart("transactions");
+			for (Transaction t: block.getTransactions()) {
+				// Extract all data from the transaction
+				jsonGenerator.writeStartObject();
+				jsonGenerator.writeBinaryField("tid", t.getTid());
+				jsonGenerator.writeBinaryField("prevTid", t.getPrevTid());
+				jsonGenerator.writeBinaryField("gv", t.getGv());
+				jsonGenerator.writeStringField("timestamp", t.getTimestamp());
+				if (t.getType() == TransactionType.Standard) {
+					jsonGenerator.writeStringField("type", "standard");
+				} else if (t.getType() == TransactionType.Remove) {
+					jsonGenerator.writeStringField("type", "remove");
+				} else {
+					jsonGenerator.writeStringField("type", "summary");
+				}
+				// TODO - serialize the individual items in the "data" hashmap
+				jsonGenerator.writeBinaryField("data", Util.serialize(t.getData()));
+				jsonGenerator.writeEndObject();
+			}
+			jsonGenerator.writeEndArray();
+			jsonGenerator.writeEndObject();
+		}
+	}
+	
+	public class CustomBlockDeserializer extends StdDeserializer<Block> {
+
+		public CustomBlockDeserializer() {
+			this(null);
+		}
+
+		public CustomBlockDeserializer(Class<?> vc) {
+			super(vc);
+		}
+	 
+		@Override
+		public Block deserialize(JsonParser parser, DeserializationContext deserializer) throws IOException {
+			Block block = new Block();
+			ObjectCodec codec = parser.getCodec();
+			JsonNode node = codec.readTree(parser);
+ 
+			block.setBlockId(node.get("blockId").asText().getBytes());
+			block.setPrevBlockId(node.get("prevBlockId").asText().getBytes());
+			
+			JsonNode transactions = node.get("transactions");
+			for (JsonNode n : transactions) {
+				Transaction t = new Transaction();
+				t.setTid(n.get("tid").asText().getBytes());
+				t.setPrevTid(n.get("prevTid").asText().getBytes());
+				t.setGv(n.get("gv").asText().getBytes());
+				t.setTimestamp(n.get("timestamp").asText());
+				if (n.get("type").asText().equals("standard")) {
+					t.setType(TransactionType.Standard);
+				} else if (n.get("type").asText().equals("remove")) {
+					t.setType(TransactionType.Remove);
+				} else if (n.get("type").asText().equals("summary")) {
+					t.setType(TransactionType.Summary);
+				} else {
+					System.out.println("Error");
+					System.exit(0);
+				}
+				
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				try {
+					data = Util.deserialize(n.get("data").asText().getBytes());
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+				t.setData(data);
+				
+				block.addTransaction(t);
+		    }
+			return block;
+		}
+	}
+
 }
+
+
