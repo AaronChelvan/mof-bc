@@ -35,13 +35,18 @@ import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 public class Node {
@@ -57,8 +62,6 @@ public class Node {
 	
 	private static int originalNumTransactions; // The number of transactions created during the transaction creation phase
 	
-	private static ObjectMapper objectMapper;
-	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
 		System.out.println("Node is running");
 		
@@ -71,9 +74,6 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
-		// ObjectMapper for converting objects to JSON strings, and vice versa
-		objectMapper = new ObjectMapper();
-		
 		// If we are removing or summarizing transactions, populate myTransactions with a list of all transactions created by this node
 		if (Config.mode == 1 || Config.mode == 2) {
 			// Add all existing transactions to the myTransactions list
@@ -83,11 +83,10 @@ public class Node {
 				Block b;
 				if (Config.jsonSerialization == true) {
 					// TODO - how to read transaction objects within the block object
-					b = objectMapper.readValue(iterator.peekNext().getValue(), Block.class);
+					b = jsonToBlock(iterator.peekNext().getValue());
 				} else {
 					b = Util.deserialize(iterator.peekNext().getValue());
 				}
-				
 
 				for (Transaction t: b.getTransactions()) {
 					myTransactions.add(new TransactionLocation(blockId, t.getTid(), t.getPrevTid()));
@@ -140,9 +139,9 @@ public class Node {
 			// Add the block to this node's blockchain database
 			if (Config.jsonSerialization == true) {
 				// Convert the block to JSON 
-				String jsonStr = objectMapper.writeValueAsString(b); 
-	            System.out.println(jsonStr); 
-	            db.put(b.getBlockId(), jsonStr.getBytes());
+				byte[] jsonStr = blockToJson(b);
+				System.out.println(new String(jsonStr)); 
+				db.put(b.getBlockId(), jsonStr);
 			} else {
 				db.put(b.getBlockId(), Util.serialize(b));
 			}
@@ -304,95 +303,20 @@ public class Node {
 		}
 	}
 
-	public class CustomBlockSerializer extends StdSerializer<Block> {
-
-		public CustomBlockSerializer() {
-			this(null);
-		}
-
-		public CustomBlockSerializer(Class<Block> t) {
-			super(t);
-		}
-
-		@Override
-		public void serialize(
-			Block block, JsonGenerator jsonGenerator, SerializerProvider serializer) throws IOException {
-			jsonGenerator.writeStartObject();
-			jsonGenerator.writeBinaryField("blockId", block.getBlockId());
-			jsonGenerator.writeBinaryField("prevBlockId", block.getPrevBlockId());
-			jsonGenerator.writeArrayFieldStart("transactions");
-			for (Transaction t: block.getTransactions()) {
-				// Extract all data from the transaction
-				jsonGenerator.writeStartObject();
-				jsonGenerator.writeBinaryField("tid", t.getTid());
-				jsonGenerator.writeBinaryField("prevTid", t.getPrevTid());
-				jsonGenerator.writeBinaryField("gv", t.getGv());
-				jsonGenerator.writeStringField("timestamp", t.getTimestamp());
-				if (t.getType() == TransactionType.Standard) {
-					jsonGenerator.writeStringField("type", "standard");
-				} else if (t.getType() == TransactionType.Remove) {
-					jsonGenerator.writeStringField("type", "remove");
-				} else {
-					jsonGenerator.writeStringField("type", "summary");
-				}
-				// TODO - serialize the individual items in the "data" hashmap
-				jsonGenerator.writeBinaryField("data", Util.serialize(t.getData()));
-				jsonGenerator.writeEndObject();
-			}
-			jsonGenerator.writeEndArray();
-			jsonGenerator.writeEndObject();
-		}
+	private static byte[] blockToJson(Block b) throws JsonProcessingException {
+		ObjectMapper mapper = new ObjectMapper();
+		SimpleModule module = new SimpleModule("CustomBlockSerializer", new Version(1, 0, 0, null, null, null));
+		module.addSerializer(Block.class, new CustomBlockSerializer());
+		mapper.registerModule(module);
+		return mapper.writeValueAsBytes(b);
 	}
 	
-	public class CustomBlockDeserializer extends StdDeserializer<Block> {
-
-		public CustomBlockDeserializer() {
-			this(null);
-		}
-
-		public CustomBlockDeserializer(Class<?> vc) {
-			super(vc);
-		}
-	 
-		@Override
-		public Block deserialize(JsonParser parser, DeserializationContext deserializer) throws IOException {
-			Block block = new Block();
-			ObjectCodec codec = parser.getCodec();
-			JsonNode node = codec.readTree(parser);
- 
-			block.setBlockId(node.get("blockId").asText().getBytes());
-			block.setPrevBlockId(node.get("prevBlockId").asText().getBytes());
-			
-			JsonNode transactions = node.get("transactions");
-			for (JsonNode n : transactions) {
-				Transaction t = new Transaction();
-				t.setTid(n.get("tid").asText().getBytes());
-				t.setPrevTid(n.get("prevTid").asText().getBytes());
-				t.setGv(n.get("gv").asText().getBytes());
-				t.setTimestamp(n.get("timestamp").asText());
-				if (n.get("type").asText().equals("standard")) {
-					t.setType(TransactionType.Standard);
-				} else if (n.get("type").asText().equals("remove")) {
-					t.setType(TransactionType.Remove);
-				} else if (n.get("type").asText().equals("summary")) {
-					t.setType(TransactionType.Summary);
-				} else {
-					System.out.println("Error");
-					System.exit(0);
-				}
-				
-				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
-				try {
-					data = Util.deserialize(n.get("data").asText().getBytes());
-				} catch (ClassNotFoundException e) {
-					e.printStackTrace();
-				}
-				t.setData(data);
-				
-				block.addTransaction(t);
-		    }
-			return block;
-		}
+	private static Block jsonToBlock(byte[] b) throws JsonParseException, JsonMappingException, IOException {
+		ObjectMapper mapper = new ObjectMapper();
+		SimpleModule module = new SimpleModule("CustomBlockDeserializer", new Version(1, 0, 0, null, null, null));
+		module.addDeserializer(Block.class, new CustomBlockDeserializer());
+		mapper.registerModule(module);
+		return mapper.readValue(b, Block.class);
 	}
 
 }

@@ -1,6 +1,6 @@
 
 public class Config {
-	public static int mode = 0; // 0 == create blockchain. 1 == remove transactions. 2 == summarize transactions.
+	public static int mode = 1; // 0 == create blockchain. 1 == remove transactions. 2 == summarize transactions.
 	public static final int dataSize = 100; // Size of data in a standard transaction
 	public static final double removalPercentage = 1.0; // Percentage of transactions that should be removed. 0.25 == 25%
 	public static final int numTransactionsInSummary = 5; // The number of transactions in a single summary transaction

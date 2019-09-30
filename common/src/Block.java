@@ -45,6 +45,10 @@ public class Block implements Serializable {
 		blockId = id;
 	}
 	
+	public void setTransactions(ArrayList<Transaction> transactionList) {
+		this.transactionList = transactionList;
+	}
+	
 	public void setPrevBlockId(byte[] id) {
 		prevBlockId = id;
 	}
