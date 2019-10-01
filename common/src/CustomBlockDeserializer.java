@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.ObjectCodec;
@@ -25,24 +26,24 @@ public class CustomBlockDeserializer extends StdDeserializer<Block> {
 		ObjectCodec codec = parser.getCodec();
 		JsonNode node = codec.readTree(parser);
 
-		block.setBlockId(node.get("blockId").asText().getBytes());
-		block.setPrevBlockId(node.get("prevBlockId").asText().getBytes());
-		ArrayList<Transaction> transactionList = null;
+		block.setBlockId(node.get("blockId").binaryValue());
+		block.setPrevBlockId(node.get("prevBlockId").binaryValue());
+		/*ArrayList<Transaction> transactionList = null;
 		try {
 			transactionList = Util.deserialize(node.get("transactions").binaryValue());
 		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		block.setTransactions(transactionList);
+		block.setTransactions(transactionList);*/
 		
-		/*
+
 		JsonNode transactions = node.get("transactions");
 		for (JsonNode n : transactions) {
 			Transaction t = new Transaction();
-			t.setTid(n.get("tid").asText().getBytes());
-			t.setPrevTid(n.get("prevTid").asText().getBytes());
-			t.setGv(n.get("gv").asText().getBytes());
+			t.setTid(n.get("tid").binaryValue());
+			t.setPrevTid(n.get("prevTid").binaryValue());
+			t.setGv(n.get("gv").binaryValue());
 			t.setTimestamp(n.get("timestamp").asText());
 			if (n.get("type").asText().equals("standard")) {
 				t.setType(TransactionType.Standard);
@@ -57,7 +58,7 @@ public class CustomBlockDeserializer extends StdDeserializer<Block> {
 			
 			HashMap<String, byte[]> data = new HashMap<String, byte[]>();
 			try {
-				data = Util.deserialize(n.get("data").asText().getBytes());
+				data = (HashMap<String, byte[]>)Util.deserialize(n.get("data").binaryValue());
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			}
@@ -65,7 +66,7 @@ public class CustomBlockDeserializer extends StdDeserializer<Block> {
 			
 			block.addTransaction(t);
 	    }
-	    */
+
 		return block;
 	}
 }

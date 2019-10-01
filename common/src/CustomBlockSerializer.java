@@ -22,8 +22,7 @@ public class CustomBlockSerializer extends StdSerializer<Block> {
 		jsonGenerator.writeStartObject();
 		jsonGenerator.writeBinaryField("blockId", block.getBlockId());
 		jsonGenerator.writeBinaryField("prevBlockId", block.getPrevBlockId());
-		jsonGenerator.writeBinaryField("transactions", Util.serialize(block.getTransactions()));
-		/*jsonGenerator.writeArrayFieldStart("transactions");
+		jsonGenerator.writeArrayFieldStart("transactions");
 		for (Transaction t: block.getTransactions()) {
 			// Extract all data from the transaction
 			jsonGenerator.writeStartObject();
@@ -42,7 +41,7 @@ public class CustomBlockSerializer extends StdSerializer<Block> {
 			jsonGenerator.writeBinaryField("data", Util.serialize(t.getData()));
 			jsonGenerator.writeEndObject();
 		}
-		jsonGenerator.writeEndArray();*/
+		jsonGenerator.writeEndArray();
 		jsonGenerator.writeEndObject();
 	}
 }

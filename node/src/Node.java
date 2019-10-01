@@ -82,7 +82,6 @@ public class Node {
 				byte[] blockId = iterator.peekNext().getKey();
 				Block b;
 				if (Config.jsonSerialization == true) {
-					// TODO - how to read transaction objects within the block object
 					b = jsonToBlock(iterator.peekNext().getValue());
 				} else {
 					b = Util.deserialize(iterator.peekNext().getValue());
@@ -233,7 +232,7 @@ public class Node {
 			new Random().nextBytes(sigMessage);
 			transactionData.put("sigMessage", sigMessage);
 			transactionData.put("sig", Util.sign(privateKey, sigMessage));
-			// TODO - Add summary time, transorder, list of hash(GVS), and list of hash(P.T.ID)
+			// TODO - Add summary time, transorder, hash(GVS), and list of hash(P.T.ID)
 			
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Summary);
 
