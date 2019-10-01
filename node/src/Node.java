@@ -74,18 +74,39 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
+		// Convert the blockchain to JSON and exit
+		if (Config.mode == 3) { 
+			DBIterator iterator = db.iterator();
+			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				Block b = Util.deserialize(iterator.peekNext().getValue());
+				byte[] jsonStr = blockToJson(b);
+				System.out.println(new String(jsonStr)); 
+				db.put(b.getBlockId(), jsonStr);
+			}
+			iterator.close();
+			db.close();
+			System.exit(0);
+		}
+		
+		// Convert the blockchain from JSON to Java serialization and exit
+		if (Config.mode == 4) { 
+			DBIterator iterator = db.iterator();
+			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				Block b = jsonToBlock(iterator.peekNext().getValue());
+				db.put(b.getBlockId(), Util.serialize(b));
+			}
+			iterator.close();
+			db.close();
+			System.exit(0);
+		}
+		
 		// If we are removing or summarizing transactions, populate myTransactions with a list of all transactions created by this node
 		if (Config.mode == 1 || Config.mode == 2) {
 			// Add all existing transactions to the myTransactions list
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
 				byte[] blockId = iterator.peekNext().getKey();
-				Block b;
-				if (Config.jsonSerialization == true) {
-					b = jsonToBlock(iterator.peekNext().getValue());
-				} else {
-					b = Util.deserialize(iterator.peekNext().getValue());
-				}
+				Block b = Util.deserialize(iterator.peekNext().getValue());
 
 				for (Transaction t: b.getTransactions()) {
 					myTransactions.add(new TransactionLocation(blockId, t.getTid(), t.getPrevTid()));
@@ -136,14 +157,7 @@ public class Node {
 			}
 			
 			// Add the block to this node's blockchain database
-			if (Config.jsonSerialization == true) {
-				// Convert the block to JSON 
-				byte[] jsonStr = blockToJson(b);
-				System.out.println(new String(jsonStr)); 
-				db.put(b.getBlockId(), jsonStr);
-			} else {
-				db.put(b.getBlockId(), Util.serialize(b));
-			}
+			db.put(b.getBlockId(), Util.serialize(b));
 			
 			db.close();
 		}

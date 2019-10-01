@@ -43,26 +43,33 @@ public class CustomBlockDeserializer extends StdDeserializer<Block> {
 			Transaction t = new Transaction();
 			t.setTid(n.get("tid").binaryValue());
 			t.setPrevTid(n.get("prevTid").binaryValue());
-			t.setGv(n.get("gv").binaryValue());
-			t.setTimestamp(n.get("timestamp").asText());
-			if (n.get("type").asText().equals("standard")) {
-				t.setType(TransactionType.Standard);
-			} else if (n.get("type").asText().equals("remove")) {
-				t.setType(TransactionType.Remove);
-			} else if (n.get("type").asText().equals("summary")) {
-				t.setType(TransactionType.Summary);
-			} else {
-				System.out.println("Error");
-				System.exit(0);
+			if (n.get("gv") != null) {
+				t.setGv(n.get("gv").binaryValue());
 			}
-			
-			HashMap<String, byte[]> data = new HashMap<String, byte[]>();
-			try {
-				data = (HashMap<String, byte[]>)Util.deserialize(n.get("data").binaryValue());
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
+			if (n.get("timestamp") != null) {
+				t.setTimestamp(n.get("timestamp").asText());
 			}
-			t.setData(data);
+			if (n.get("type") != null) {
+				if (n.get("type").asText().equals("standard")) {
+					t.setType(TransactionType.Standard);
+				} else if (n.get("type").asText().equals("remove")) {
+					t.setType(TransactionType.Remove);
+				} else if (n.get("type").asText().equals("summary")) {
+					t.setType(TransactionType.Summary);
+				} else {
+					System.out.println("Error");
+					System.exit(0);
+				}
+			}
+			if (n.get("data") != null) {
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				try {
+					data = (HashMap<String, byte[]>)Util.deserialize(n.get("data").binaryValue());
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+				t.setData(data);
+			}
 			
 			block.addTransaction(t);
 	    }
