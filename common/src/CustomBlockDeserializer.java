@@ -52,23 +52,24 @@ public class CustomBlockDeserializer extends StdDeserializer<Block> {
 			if (n.get("type") != null) {
 				if (n.get("type").asText().equals("standard")) {
 					t.setType(TransactionType.Standard);
+					HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+					data.put("data", n.get("data").binaryValue());
+					t.setData(data);
 				} else if (n.get("type").asText().equals("remove")) {
 					t.setType(TransactionType.Remove);
+					HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+					data.put("location", n.get("location").binaryValue());
+					data.put("pubKey", n.get("pubKey").binaryValue());
+					data.put("unsignedGv", n.get("unsignedGv").binaryValue());
+					data.put("sigMesage", n.get("sigMessage").binaryValue());
+					data.put("sig", n.get("sig").binaryValue());					
+					t.setData(data);
 				} else if (n.get("type").asText().equals("summary")) {
 					t.setType(TransactionType.Summary);
 				} else {
 					System.out.println("Error");
 					System.exit(0);
 				}
-			}
-			if (n.get("data") != null) {
-				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
-				try {
-					data = (HashMap<String, byte[]>)Util.deserialize(n.get("data").binaryValue());
-				} catch (ClassNotFoundException e) {
-					e.printStackTrace();
-				}
-				t.setData(data);
 			}
 			
 			block.addTransaction(t);

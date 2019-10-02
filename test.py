@@ -25,7 +25,7 @@ elif sys.argv[1] == "compare":
 
 		total = 0
 		for key, val in db:
-			#print(repr(val))
+			print(repr(val))
 			total += len(val)
 		
 		print("Size = %d" % total)
