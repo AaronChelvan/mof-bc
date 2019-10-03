@@ -49,17 +49,17 @@ public class CustomBlockSerializer extends StdSerializer<Block> {
 					jsonGenerator.writeBinaryField("unsignedGv", data.get("unsignedGv"));
 					jsonGenerator.writeBinaryField("sigMessage", data.get("sigMessage"));
 					jsonGenerator.writeBinaryField("sig", data.get("sig"));
-					
-					/*transactionData.put("location", Util.serialize(tl));
-					transactionData.put("pubKey", Util.serialize(publicKey));
-					transactionData.put("unsignedGv", computeGv(tl.getPrevTransactionID(), false));
-					byte[] sigMessage = new byte[20]; // Generate a signature message
-					new Random().nextBytes(sigMessage);
-					transactionData.put("sigMessage", sigMessage);
-					transactionData.put("sig", Util.sign(privateKey, sigMessage));*/
 				} else {
 					jsonGenerator.writeStringField("type", "summary");
-					// TODO - serialize the items in a summary transaction
+					HashMap<String, byte[]> data = t.getData();
+					jsonGenerator.writeBinaryField("locations", data.get("locations"));
+					jsonGenerator.writeBinaryField("pubKey", data.get("pubKey"));
+					jsonGenerator.writeBinaryField("gvsHash", data.get("gvsHash"));
+					jsonGenerator.writeBinaryField("prevTids", data.get("prevTids"));
+					jsonGenerator.writeBinaryField("sig", data.get("sig"));
+					jsonGenerator.writeBinaryField("sigMessage", data.get("sigMessage"));
+					jsonGenerator.writeBinaryField("summaryTime", data.get("summaryTime"));
+					jsonGenerator.writeBinaryField("transorder", data.get("transorder"));
 				}
 			}
 

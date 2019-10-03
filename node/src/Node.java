@@ -22,11 +22,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -51,6 +55,8 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 public class Node {
 	private static DB db;
+	private static Lock dbLock;
+	private static Options options;
 	private static Socket clientSocket;
 	private static ObjectOutputStream output;
 	private static ArrayList<TransactionLocation> myTransactions;
@@ -66,9 +72,10 @@ public class Node {
 		System.out.println("Node is running");
 		
 		// LevelDB setup
-		Options options = new Options();
+		options = new Options();
 		options.createIfMissing(true);
 		db = factory.open(new File("blockchain"), options);
+		dbLock = new ReentrantLock();
 		
 		// myTransactions contains the locations of all transactions created by this node.
 		// After a transaction is removed or summarized, it is removed from this node.
@@ -149,6 +156,7 @@ public class Node {
 			ObjectInputStream in = new ObjectInputStream(connectionSocket.getInputStream());
 			Block b = (Block) in.readObject();
 			
+			dbLock.lock();
 			db = factory.open(new File("blockchain"), options);
 			if (db.get(b.getBlockId()) == null) {
 				System.out.println("Received new block from the miner");
@@ -160,6 +168,7 @@ public class Node {
 			db.put(b.getBlockId(), Util.serialize(b));
 			
 			db.close();
+			dbLock.unlock();
 		}
 	}
 	
@@ -220,6 +229,8 @@ public class Node {
 			// Contains the list of transactions to summarize
 			ArrayList<TransactionLocation> transactionsToSummarize = new ArrayList<TransactionLocation>();
 			ArrayList<byte[]> prevTids = new ArrayList<byte[]>();
+			ArrayList<byte[]> tids = new ArrayList<byte[]>();
+			ArrayList<String> timestamps = new ArrayList<String>();
 			// Pick some random transactions to summarize
 			for (int i = 0; i < Config.numTransactionsInSummary; i++) {
 				// Pick a transaction at random
@@ -229,12 +240,73 @@ public class Node {
 				myTransactions.remove(tl);
 				transactionsToSummarize.add(tl);
 				
+				// Get the previous transaction id
 				prevTids.add(computeHash(tl.getPrevTransactionID()));
+				
+				// Get the transaction id
+				tids.add(tl.getTransactionID());
+				
+				// Get the timestamp
+				dbLock.lock();
+				db = factory.open(new File("blockchain"), options);
+				DBIterator iterator = db.iterator();
+				boolean found = false;
+				for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+					byte[] blockId = iterator.peekNext().getKey();
+					if (Arrays.equals(tl.getBlockID(), blockId)) {
+						Block b = Util.deserialize(iterator.peekNext().getValue());
+						for (Transaction t: b.getTransactions()) {
+							if (Arrays.equals(t.getTid(), tl.getTransactionID())) {
+								timestamps.add(t.getTimestamp());
+								found = true;
+								break;
+							}
+						}
+						if (found == true) break;
+					}
+				}
+				if (found == false) {
+					System.out.println("Could not find timestamp");
+					System.exit(0);
+				}
+				iterator.close();
+				db.close();
+				dbLock.unlock();
 				
 				if (myTransactions.size() == 0) {
 					break;
 				}
 			}
+			
+			// Find the minimum number of unique bytes needed in the list of transaction IDs
+			int trimmedLength = 0;
+			for (int length = 1; length < tids.get(0).length; length++) {
+				Set<String> set = new HashSet<String>();
+				boolean failed = false;
+				for (byte[] t: tids) {
+					byte[] slice = Arrays.copyOfRange(t, 0, length+1);
+					if (set.contains(new String(slice))) {
+						failed = true; // failed to find a valid length
+						break;
+					} else {
+						set.add(new String(slice));
+					}
+				}
+				
+				// If we have found a valid length
+				if (failed == false) {
+					trimmedLength = length;
+					break;
+				}
+			}
+			
+			if (trimmedLength != 0) {
+				// Trim the length of the transaction IDs
+				for (int i = 0; i < tids.size(); i++) {
+					byte[] newTid = Arrays.copyOfRange(tids.get(i), 0, trimmedLength+1);
+					tids.set(i, newTid);
+				}
+			}			
 			
 			// Create a summary transaction
 			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
@@ -246,7 +318,8 @@ public class Node {
 			new Random().nextBytes(sigMessage);
 			transactionData.put("sigMessage", sigMessage);
 			transactionData.put("sig", Util.sign(privateKey, sigMessage));
-			// TODO - Add summary time, transorder, hash(GVS), and list of hash(P.T.ID)
+			transactionData.put("summaryTime", Util.serialize(timestamps));
+			transactionData.put("transorder", Util.serialize(tids));
 			
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Summary);
 

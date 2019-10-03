@@ -28,15 +28,6 @@ public class CustomBlockDeserializer extends StdDeserializer<Block> {
 
 		block.setBlockId(node.get("blockId").binaryValue());
 		block.setPrevBlockId(node.get("prevBlockId").binaryValue());
-		/*ArrayList<Transaction> transactionList = null;
-		try {
-			transactionList = Util.deserialize(node.get("transactions").binaryValue());
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		block.setTransactions(transactionList);*/
-		
 
 		JsonNode transactions = node.get("transactions");
 		for (JsonNode n : transactions) {
@@ -66,6 +57,16 @@ public class CustomBlockDeserializer extends StdDeserializer<Block> {
 					t.setData(data);
 				} else if (n.get("type").asText().equals("summary")) {
 					t.setType(TransactionType.Summary);
+					HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+					data.put("locations", n.get("locations").binaryValue());
+					data.put("pubKey", n.get("pubKey").binaryValue());
+					data.put("gvsHash", n.get("gvsHash").binaryValue());
+					data.put("prevTids", n.get("prevTids").binaryValue());
+					data.put("sig", n.get("sig").binaryValue());
+					data.put("sigMesage", n.get("sigMessage").binaryValue());
+					data.put("summaryTime", n.get("summaryTime").binaryValue());
+					data.put("transorder", n.get("transorder").binaryValue());
+					t.setData(data);
 				} else {
 					System.out.println("Error");
 					System.exit(0);
