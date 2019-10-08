@@ -81,12 +81,15 @@ public class Node {
 		// After a transaction is removed or summarized, it is removed from this node.
 		myTransactions = new ArrayList<TransactionLocation>();
 		
-		// Convert the blockchain to JSON and exit
-		if (Config.mode == 3) { 
+		// Convert the blockchain from Java serialization to JSON and exit
+		if (Config.mode == 3) {
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
 				Block b = Util.deserialize(iterator.peekNext().getValue());
+				long startTime = System.nanoTime();
 				byte[] jsonStr = blockToJson(b);
+				long endTime = System.nanoTime();
+				System.out.println("Time to convert block to JSON: " + (endTime - startTime) + "ns");
 				System.out.println(new String(jsonStr)); 
 				db.put(b.getBlockId(), jsonStr);
 			}
@@ -99,7 +102,42 @@ public class Node {
 		if (Config.mode == 4) { 
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				long startTime = System.nanoTime();
 				Block b = jsonToBlock(iterator.peekNext().getValue());
+				long endTime = System.nanoTime();
+				System.out.println("Time to convert JSON to block: " + (endTime - startTime) + "ns");
+				db.put(b.getBlockId(), Util.serialize(b));
+			}
+			iterator.close();
+			db.close();
+			System.exit(0);
+		}
+		
+		// Convert the blockchain from Java serialization to CSV and exit
+		if (Config.mode == 5) {
+			DBIterator iterator = db.iterator();
+			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				Block b = Util.deserialize(iterator.peekNext().getValue());
+				long startTime = System.nanoTime();
+				byte[] csvStr = blockToCsv(b);
+				long endTime = System.nanoTime();
+				System.out.println("Time to convert block to CSV: " + (endTime - startTime) + "ns");
+				System.out.println(new String(csvStr)); 
+				db.put(b.getBlockId(), csvStr);
+			}
+			iterator.close();
+			db.close();
+			System.exit(0);
+		}
+		
+		// Convert the blockchain from CSV to Java serialization and exit
+		if (Config.mode == 6) {
+			DBIterator iterator = db.iterator();
+			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				long startTime = System.nanoTime();
+				Block b = csvToBlock(iterator.peekNext().getValue());
+				long endTime = System.nanoTime();
+				System.out.println("Time to convert CSV to block: " + (endTime - startTime) + "ns");
 				db.put(b.getBlockId(), Util.serialize(b));
 			}
 			iterator.close();
@@ -132,7 +170,7 @@ public class Node {
 		gvs = System.getenv("GVS");
 		
 		// Initialize the previous transaction ID to an empty string
-		prevTid = new byte[0];
+		prevTid = ".".getBytes();
 		
 		// Thread for sending transactions
 		Runnable sendTransactionRunnable = new Runnable() {
@@ -403,6 +441,148 @@ public class Node {
 		module.addDeserializer(Block.class, new CustomBlockDeserializer());
 		mapper.registerModule(module);
 		return mapper.readValue(b, Block.class);
+	}
+	
+	private static byte[] blockToCsv(Block b) {
+		StringBuilder csv = new StringBuilder();
+		// The first line contains the block ID and the previous block ID
+		csv.append(encodeBase64(b.getBlockId()));
+		csv.append(",");
+		csv.append(encodeBase64(b.getPrevBlockId()));
+		csv.append("\n");
+		
+		// Iterate through the transactions
+		for (Transaction t: b.getTransactions()) {
+			csv.append(encodeBase64(t.getTid()));
+			csv.append(",");
+			csv.append(encodeBase64(t.getPrevTid()));
+			if (t.getType() == TransactionType.Standard) {
+				HashMap<String, byte[]> data = t.getData();
+				csv.append(",");
+				csv.append("standard");
+				csv.append(",");
+				csv.append(encodeBase64(t.getGv()));
+				csv.append(",");
+				csv.append(t.getTimestamp());
+				csv.append(",");
+				csv.append(encodeBase64(data.get("data")));				
+			} else if (t.getType() == TransactionType.Remove) {
+				HashMap<String, byte[]> data = t.getData();
+				csv.append(",");
+				csv.append("remove");
+				csv.append(",");
+				csv.append(encodeBase64(t.getGv()));
+				csv.append(",");
+				csv.append(t.getTimestamp());
+				csv.append(",");
+				csv.append(encodeBase64(data.get("location")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("pubKey")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("unsignedGv")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("sigMessage")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("sig")));				
+			} else if (t.getType() == TransactionType.Summary) {
+				HashMap<String, byte[]> data = t.getData();
+				csv.append(",");
+				csv.append("summary");
+				csv.append(",");
+				csv.append(encodeBase64(t.getGv()));
+				csv.append(",");
+				csv.append(t.getTimestamp());
+				csv.append(",");
+				csv.append(encodeBase64(data.get("locations")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("pubKey")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("gvsHash")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("prevTids")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("sig")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("sigMessage")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("summaryTime")));
+				csv.append(",");
+				csv.append(encodeBase64(data.get("transorder")));				
+			}
+			csv.append("\n");
+		}
+		return csv.toString().getBytes();
+	}
+	
+	private static Block csvToBlock(byte[] csv) {
+		String csvString = new String(csv);
+		String[] lines = csvString.split("\n");
+		
+		Block b = new Block();
+		// The first line contains the block ID and the previous block ID
+		String[] parts = lines[0].split(",");
+		b.setBlockId(decodeBase64(parts[0]));
+		b.setPrevBlockId(decodeBase64(parts[1]));
+		
+		// The remaining lines are transactions
+		for (int i = 1; i < lines.length; i++) {
+			Transaction t = new Transaction();
+			parts = lines[i].split(",");
+			t.setTid(decodeBase64(parts[0]));
+			t.setPrevTid(decodeBase64(parts[1]));
+			
+			// If this is a transaction doesn't have any more fields
+			// because they have been removed, go to the next line
+			if (parts.length == 2) {
+				continue;
+			}
+			
+			if (parts[2].equals("standard")) {
+				t.setType(TransactionType.Standard);
+				t.setGv(decodeBase64(parts[3]));
+				t.setTimestamp(parts[4]);
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				data.put("data", decodeBase64(parts[5]));
+				t.setData(data);
+			} else if (parts[2].equals("remove")) {
+				t.setType(TransactionType.Remove);
+				t.setGv(decodeBase64(parts[3]));
+				t.setTimestamp(parts[4]);
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				data.put("location", decodeBase64(parts[5]));
+				data.put("pubKey", decodeBase64(parts[6]));
+				data.put("unsignedGv", decodeBase64(parts[7]));
+				data.put("sigMessage", decodeBase64(parts[8]));
+				data.put("sig", decodeBase64(parts[9]));	
+				t.setData(data);
+			} else if (parts[2].equals("summary")) {
+				t.setType(TransactionType.Summary);
+				t.setGv(decodeBase64(parts[3]));
+				t.setTimestamp(parts[4]);
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				data.put("locations", decodeBase64(parts[5]));
+				data.put("pubKey", decodeBase64(parts[6]));
+				data.put("gvsHash", decodeBase64(parts[7]));
+				data.put("prevTids", decodeBase64(parts[8]));
+				data.put("sig", decodeBase64(parts[9]));
+				data.put("sigMessage", decodeBase64(parts[10]));
+				data.put("summaryTime", decodeBase64(parts[11]));
+				data.put("transorder", decodeBase64(parts[12]));
+				t.setData(data);
+			}
+			
+			b.addTransaction(t);
+		}
+		
+		return b;
+	}
+	
+	private static String encodeBase64(byte[] input) {
+		return Base64.getEncoder().encodeToString(input);
+	}
+
+	private static byte[] decodeBase64(String input) {
+		return Base64.getDecoder().decode(input.getBytes());
 	}
 
 }

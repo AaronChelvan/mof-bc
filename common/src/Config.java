@@ -5,7 +5,9 @@ public class Config {
 	// 2 == summarize transactions
 	// 3 == convert DB to JSON
 	// 4 == convert DB from JSON
-	public static int mode = 3;
+	// 5 == convert DB to CSV
+	// 6 == convert DB from CSV
+	public static int mode = 0;
 	
 	public static final int dataSize = 100; // Size of data in a standard transaction
 	public static final double removalPercentage = 1.0; // Percentage of transactions that should be removed. 0.25 == 25%
