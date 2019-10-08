@@ -33,7 +33,7 @@ public class Miner {
 		
 		// Blockchain configuration
 		currentBlock = new Block();
-		prevBlockId = new byte[0];
+		prevBlockId = ".".getBytes();
 		currentBlockId = new byte[0];
 		
 		// Socket setup

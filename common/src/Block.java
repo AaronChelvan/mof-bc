@@ -19,6 +19,10 @@ public class Block implements Serializable {
 	public byte[] getBlockId() {
 		return blockId;
 	}
+	
+	public byte[] getPrevBlockId() {
+		return prevBlockId;
+	}
 
 	public void setBlockId() {
 		// Compute a hash from all transaction IDs and prev transaction IDs in this block
@@ -35,6 +39,14 @@ public class Block implements Serializable {
 		}
 		
 		blockId = md.digest();
+	}
+	
+	public void setBlockId(byte[] id) {
+		blockId = id;
+	}
+	
+	public void setTransactions(ArrayList<Transaction> transactionList) {
+		this.transactionList = transactionList;
 	}
 	
 	public void setPrevBlockId(byte[] id) {
