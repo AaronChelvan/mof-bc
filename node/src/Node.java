@@ -67,6 +67,7 @@ public class Node {
 	private static String gvs;
 	
 	private static int originalNumTransactions; // The number of transactions created during the transaction creation phase
+	private static long startTime; // used for recording timings
 	
 	public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, InvalidKeySpecException, InvalidKeyException, SignatureException {
 		System.out.println("Node is running");
@@ -86,10 +87,9 @@ public class Node {
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
 				Block b = Util.deserialize(iterator.peekNext().getValue());
-				long startTime = System.nanoTime();
+				startTime = System.nanoTime();
 				byte[] jsonStr = blockToJson(b);
-				long endTime = System.nanoTime();
-				System.out.println("Time to convert block to JSON: " + (endTime - startTime) + "ns");
+				System.out.println("Time to convert block to JSON: " + (System.nanoTime() - startTime) + "ns");
 				System.out.println(new String(jsonStr)); 
 				db.put(b.getBlockId(), jsonStr);
 			}
@@ -102,10 +102,9 @@ public class Node {
 		if (Config.mode == 4) { 
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
-				long startTime = System.nanoTime();
+				startTime = System.nanoTime();
 				Block b = jsonToBlock(iterator.peekNext().getValue());
-				long endTime = System.nanoTime();
-				System.out.println("Time to convert JSON to block: " + (endTime - startTime) + "ns");
+				System.out.println("Time to convert JSON to block: " + (System.nanoTime() - startTime) + "ns");
 				db.put(b.getBlockId(), Util.serialize(b));
 			}
 			iterator.close();
@@ -118,11 +117,9 @@ public class Node {
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
 				Block b = Util.deserialize(iterator.peekNext().getValue());
-				long startTime = System.nanoTime();
+				startTime = System.nanoTime();
 				byte[] csvStr = blockToCsv(b);
-				long endTime = System.nanoTime();
-				System.out.println("Time to convert block to CSV: " + (endTime - startTime) + "ns");
-				System.out.println(new String(csvStr)); 
+				System.out.println("Time to convert block to CSV: " + (System.nanoTime() - startTime) + "ns"); 
 				db.put(b.getBlockId(), csvStr);
 			}
 			iterator.close();
@@ -134,10 +131,9 @@ public class Node {
 		if (Config.mode == 6) {
 			DBIterator iterator = db.iterator();
 			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
-				long startTime = System.nanoTime();
+				startTime = System.nanoTime();
 				Block b = csvToBlock(iterator.peekNext().getValue());
-				long endTime = System.nanoTime();
-				System.out.println("Time to convert CSV to block: " + (endTime - startTime) + "ns");
+				System.out.println("Time to convert CSV to block: " + (System.nanoTime() - startTime) + "ns");
 				db.put(b.getBlockId(), Util.serialize(b));
 			}
 			iterator.close();
@@ -173,6 +169,7 @@ public class Node {
 		prevTid = ".".getBytes();
 		
 		// Thread for sending transactions
+		startTime = System.nanoTime();
 		Runnable sendTransactionRunnable = new Runnable() {
 			public void run() {
 				try {
@@ -226,11 +223,12 @@ public class Node {
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Standard);
 		
 		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
-			System.out.println("sending a remove transaction");
+			//System.out.println("sending a remove transaction");
 			
 			// Once we are done removing transactions, wait indefinitely
 			if (myTransactions.size() <= originalNumTransactions * (1-Config.removalPercentage)) {
-				System.out.println("Done sending transactions");
+				System.out.println("Done sending remove transactions");
+				System.out.println("Time taken: " + (System.nanoTime() - startTime) + "ns");
 				while (true) {
 					TimeUnit.MINUTES.sleep(1);
 				}
@@ -254,11 +252,12 @@ public class Node {
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Remove);
 			
 		} else if (nextTransactionType == TransactionType.Summary) {
-			System.out.println("Sending a summary transaction");
+			//System.out.println("Sending a summary transaction");
 			
 			// If there are no more transactions to summarize, wait indefinitely
 			if (myTransactions.size() == 0) {
-				System.out.println("Done sending transactions");
+				System.out.println("Done sending summary transactions");
+				System.out.println("Time taken: " + (System.nanoTime() - startTime) + "ns");
 				while (true) {
 					TimeUnit.MINUTES.sleep(1);
 				}
@@ -369,11 +368,11 @@ public class Node {
 		// Send the transaction to the miner
 		if (toSend != null) {
 			if (toSend.getType() == TransactionType.Standard) {
-				System.out.println("Sent std tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
+				//System.out.println("Sent std tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else if (toSend.getType() == TransactionType.Remove) {
-				System.out.println("Sent remove tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
+				//System.out.println("Sent remove tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else if (toSend.getType() == TransactionType.Summary) {
-				System.out.println("Sent summary tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
+				//System.out.println("Sent summary tx = " + DatatypeConverter.printHexBinary(toSend.getTid()));
 			} else {
 				System.out.println("Invalid transaction type");
 				System.exit(0);

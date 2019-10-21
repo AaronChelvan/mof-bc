@@ -57,7 +57,7 @@ public class SearchAgent {
 			// If this block is already in the database, then it is an updated
 			// block which has already had its remove and summary transactions processed
 			if (db.get(currentBlock.getBlockId()) == null) {
-				System.out.println("Received new block from miner");
+				//System.out.println("Received new block from miner");
 				
 				// Add the block to the blockchain
 				db.put(currentBlock.getBlockId(), Util.serialize(currentBlock));
@@ -68,7 +68,7 @@ public class SearchAgent {
 						// Extract the location of the transaction to be removed
 						HashMap<String, byte[]> transactionData = t.getData();
 						TransactionLocation tl = Util.deserialize(transactionData.get("location"));
-						System.out.println("Found transaction to remove = " + DatatypeConverter.printHexBinary(tl.getTransactionID()));
+						//System.out.println("Found transaction to remove = " + DatatypeConverter.printHexBinary(tl.getTransactionID()));
 						
 						// Verify if the creator of this transaction is the same node
 						// that created the transaction that is to be removed

@@ -59,7 +59,7 @@ public class ServiceAgent {
 			
 			// Received a block from the miner
 			if (Util.socketClientName(connectionSocket).equals("miner")) {
-				System.out.println("Received a block from the miner");
+				//System.out.println("Received a block from the miner");
 				// Add it to the database
 				Block b = (Block) in.readObject();
 				db.put(b.getBlockId(), Util.serialize(b));
@@ -67,7 +67,7 @@ public class ServiceAgent {
 			// Received a remove transaction location from the search agent
 			} else if (Util.socketClientName(connectionSocket).equals("search_agent")) {
 				TransactionLocation tl = (TransactionLocation) in.readObject();
-				System.out.println("received transaction location from search agent = " + tl);
+				//System.out.println("received transaction location from search agent = " + tl);
 				// If the block to be updated is not already in updatedBlocks list,
 				// get it from the database
 				Block b;
@@ -100,6 +100,7 @@ public class ServiceAgent {
 		updatedBlocksLock.lock();
 		if (updatedBlocks.size() == 0) {
 			System.out.println("No blocks have been updated");
+			updatedBlocksLock.unlock();
 			return;
 		}
 		
