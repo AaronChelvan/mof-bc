@@ -90,7 +90,7 @@ public class Node {
 				startTime = System.nanoTime();
 				byte[] jsonStr = blockToJson(b);
 				System.out.println("Time to convert block to JSON: " + (System.nanoTime() - startTime) + "ns");
-				System.out.println(new String(jsonStr)); 
+				//System.out.println(new String(jsonStr)); 
 				db.put(b.getBlockId(), jsonStr);
 			}
 			iterator.close();
@@ -193,11 +193,13 @@ public class Node {
 			
 			dbLock.lock();
 			db = factory.open(new File("blockchain"), options);
+			/*
 			if (db.get(b.getBlockId()) == null) {
 				System.out.println("Received new block from the miner");
 			} else {
 				System.out.println("Received updated block from the miner");
 			}
+			*/
 			
 			// Add the block to this node's blockchain database
 			db.put(b.getBlockId(), Util.serialize(b));
