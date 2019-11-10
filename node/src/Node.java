@@ -1,6 +1,7 @@
 import static org.fusesource.leveldbjni.JniDBFactory.bytes;
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -8,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
@@ -29,6 +31,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -134,6 +137,35 @@ public class Node {
 				startTime = System.nanoTime();
 				Block b = csvToBlock(iterator.peekNext().getValue());
 				System.out.println("Time to convert CSV to block: " + (System.nanoTime() - startTime) + "ns");
+				db.put(b.getBlockId(), Util.serialize(b));
+			}
+			iterator.close();
+			db.close();
+			System.exit(0);
+		}
+		
+		// Convert the blockchain from Java serialization to the custom serialization and exit
+		if (Config.mode == 7) {
+			DBIterator iterator = db.iterator();
+			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				Block b = Util.deserialize(iterator.peekNext().getValue());
+				startTime = System.nanoTime();
+				byte[] customStr = blockToCustomSerialization(b);
+				System.out.println("Time to convert block to custom: " + (System.nanoTime() - startTime) + "ns"); 
+				db.put(b.getBlockId(), customStr);
+			}
+			iterator.close();
+			db.close();
+			System.exit(0);
+		}
+		
+		// Convert the blockchain from CSV to Java serialization and exit
+		if (Config.mode == 8) {
+			DBIterator iterator = db.iterator();
+			for(iterator.seekToFirst(); iterator.hasNext(); iterator.next()) {
+				startTime = System.nanoTime();
+				Block b = customSerializationToBlock(iterator.peekNext().getValue());
+				System.out.println("Time to convert custom to block: " + (System.nanoTime() - startTime) + "ns");
 				db.put(b.getBlockId(), Util.serialize(b));
 			}
 			iterator.close();
@@ -584,6 +616,131 @@ public class Node {
 
 	private static byte[] decodeBase64(String input) {
 		return Base64.getDecoder().decode(input.getBytes());
+	}
+	
+	private static byte[] blockToCustomSerialization(Block b) throws IOException {
+		ByteArrayOutputStream blockBytes = new ByteArrayOutputStream();
+		addItem(blockBytes, b.getBlockId());
+		addItem(blockBytes, b.getPrevBlockId());
+
+		// Iterate through the transactions
+		for (Transaction t: b.getTransactions()) {
+			addItem(blockBytes, t.getTid());
+			addItem(blockBytes, t.getPrevTid());
+			if (t.getType() == TransactionType.Standard) {
+				blockBytes.write((byte)1);
+				HashMap<String, byte[]> data = t.getData();
+				addItem(blockBytes, t.getGv());
+				addItem(blockBytes, t.getTimestamp().getBytes());
+				addItem(blockBytes, data.get("data"));			
+			} else if (t.getType() == TransactionType.Remove) {
+				blockBytes.write((byte)2);
+				HashMap<String, byte[]> data = t.getData();
+				addItem(blockBytes, t.getGv());
+				addItem(blockBytes, t.getTimestamp().getBytes());
+				addItem(blockBytes, data.get("location"));
+				addItem(blockBytes, data.get("pubKey"));
+				addItem(blockBytes, data.get("unsignedGv"));
+				addItem(blockBytes, data.get("sigMessage"));
+				addItem(blockBytes, data.get("sig"));				
+			} else if (t.getType() == TransactionType.Summary) {
+				blockBytes.write((byte)3);
+				HashMap<String, byte[]> data = t.getData();
+				addItem(blockBytes, t.getGv());
+				addItem(blockBytes, t.getTimestamp().getBytes());
+				addItem(blockBytes, data.get("locations"));
+				addItem(blockBytes, data.get("pubKey"));
+				addItem(blockBytes, data.get("gvsHash"));
+				addItem(blockBytes, data.get("prevTids"));
+				addItem(blockBytes, data.get("sig"));
+				addItem(blockBytes, data.get("sigMessage"));
+				addItem(blockBytes, data.get("summaryTime"));
+				addItem(blockBytes, data.get("transorder"));				
+			} else { // No type
+				blockBytes.write((byte)0);
+			}
+		}
+		return blockBytes.toByteArray();
+	}
+	
+	private static Block customSerializationToBlock(byte[] input) {
+		Block b = new Block();
+		AtomicInteger pos = new AtomicInteger();
+		b.setBlockId(getNextItem(input, pos));
+		b.setPrevBlockId(getNextItem(input, pos));
+		
+		// Extract the transactions
+		while (pos.get() < input.length) {
+			Transaction t = new Transaction();
+			t.setTid(getNextItem(input, pos));
+			t.setPrevTid(getNextItem(input, pos));
+			if (input[pos.get()] == (byte)0) { // no type
+				pos.addAndGet(1);
+				continue;
+			} else if (input[pos.get()] == (byte)1) { // standard
+				pos.addAndGet(1);
+				t.setType(TransactionType.Standard);
+				t.setGv(getNextItem(input, pos));
+				t.setTimestamp(new String(getNextItem(input, pos)));
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				data.put("data", getNextItem(input, pos));
+				t.setData(data);
+			} else if (input[pos.get()] == (byte)2) { // remove
+				pos.addAndGet(1);
+				t.setType(TransactionType.Remove);
+				t.setGv(getNextItem(input, pos));
+				t.setTimestamp(new String(getNextItem(input, pos)));
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				data.put("location", getNextItem(input, pos));
+				data.put("pubKey", getNextItem(input, pos));
+				data.put("unsignedGv", getNextItem(input, pos));
+				data.put("sigMessage", getNextItem(input, pos));
+				data.put("sig", getNextItem(input, pos));	
+				t.setData(data);
+			} else if (input[pos.get()] == (byte)3) { // summary
+				pos.addAndGet(1);
+				t.setType(TransactionType.Summary);
+				t.setGv(getNextItem(input, pos));
+				t.setTimestamp(new String(getNextItem(input, pos)));
+				HashMap<String, byte[]> data = new HashMap<String, byte[]>();
+				data.put("locations", getNextItem(input, pos));
+				data.put("pubKey", getNextItem(input, pos));
+				data.put("gvsHash", getNextItem(input, pos));
+				data.put("prevTids", getNextItem(input, pos));
+				data.put("sig", getNextItem(input, pos));
+				data.put("sigMessage", getNextItem(input, pos));
+				data.put("summaryTime", getNextItem(input, pos));
+				data.put("transorder", getNextItem(input, pos));
+				t.setData(data);
+				
+			}			
+			b.addTransaction(t);
+		}
+		return b;
+	}
+	
+	private static byte[] intToFourBytes(int i) {
+		return ByteBuffer.allocate(4).putInt(i).array();
+	}
+	
+	private static int fourBytesToInt (byte[] bytes) {
+		ByteBuffer bb = ByteBuffer.wrap(bytes);
+		return bb.getInt();
+	}
+	
+	private static void addItem(ByteArrayOutputStream blockBytes, byte[] item) throws IOException {
+		blockBytes.write(intToFourBytes(item.length));
+		blockBytes.write(item);
+	}
+	
+	private static byte[] getNextItem(byte[] input, AtomicInteger pos) {
+		int posInt = pos.get();
+		int itemLength = fourBytesToInt(Arrays.copyOfRange(input, posInt, posInt+4));
+		posInt += 4;
+		byte[] toReturn = Arrays.copyOfRange(input, posInt, posInt+itemLength);
+		posInt += itemLength;
+		pos.set(posInt);
+		return toReturn;
 	}
 
 }
