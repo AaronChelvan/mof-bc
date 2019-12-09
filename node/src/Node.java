@@ -1,4 +1,3 @@
-import static org.fusesource.leveldbjni.JniDBFactory.bytes;
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.ByteArrayOutputStream;
@@ -8,12 +7,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -27,7 +22,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -35,26 +29,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.xml.bind.DatatypeConverter;
-
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.core.Version;
-import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 public class Node {
 	private static DB db;
@@ -211,8 +195,9 @@ public class Node {
 				}
 			}
 		};
+		// Create a transaction every 1 millisecond
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.MILLISECONDS); // How often the node should create a transaction		
+		executor.scheduleAtFixedRate(sendTransactionRunnable, 0, 1, TimeUnit.MILLISECONDS);
 		
 		// Socket setup
 		ServerSocket nodeSocket = new ServerSocket(8000);
@@ -225,13 +210,6 @@ public class Node {
 			
 			dbLock.lock();
 			db = factory.open(new File("blockchain"), options);
-			/*
-			if (db.get(b.getBlockId()) == null) {
-				System.out.println("Received new block from the miner");
-			} else {
-				System.out.println("Received updated block from the miner");
-			}
-			*/
 			
 			// Add the block to this node's blockchain database
 			db.put(b.getBlockId(), Util.serialize(b));
@@ -241,14 +219,14 @@ public class Node {
 		}
 	}
 	
+	// Creates a transaction and sends it to the miner
 	private static void sendTransaction() throws IOException, ClassNotFoundException, InvalidKeyException, NoSuchAlgorithmException, SignatureException, InterruptedException {
-		// Create a standard transaction, or a remove transaction
 		Transaction toSend = null;
 		TransactionType nextTransactionType = getNextTransactionType();
 		byte[] gv = computeGv(prevTid, true);
 		
 		if (nextTransactionType == TransactionType.Standard) { // Create a standard transaction
-			byte[] randomMessage = new byte[Config.dataSize]; // Generate a random string
+			byte[] randomMessage = new byte[Config.dataSize]; // Generate a random array of bytes
 			new Random().nextBytes(randomMessage);
 			
 			HashMap<String, byte[]> transactionData = new HashMap<String, byte[]>();
@@ -256,9 +234,7 @@ public class Node {
 			
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Standard);
 		
-		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction
-			//System.out.println("sending a remove transaction");
-			
+		} else if (nextTransactionType == TransactionType.Remove) { // Create a remove transaction			
 			// Once we are done removing transactions, wait indefinitely
 			if (myTransactions.size() <= originalNumTransactions * (1-Config.removalPercentage)) {
 				System.out.println("Done sending remove transactions");
@@ -285,9 +261,7 @@ public class Node {
 			
 			toSend = new Transaction(transactionData, gv, prevTid, TransactionType.Remove);
 			
-		} else if (nextTransactionType == TransactionType.Summary) {
-			//System.out.println("Sending a summary transaction");
-			
+		} else if (nextTransactionType == TransactionType.Summary) {	
 			// If there are no more transactions to summarize, wait indefinitely
 			if (myTransactions.size() == 0) {
 				System.out.println("Done sending summary transactions");
@@ -430,9 +404,9 @@ public class Node {
 		md.update(computeHash(prevTid));
 		
 		if (signed == true) {
-			return Util.sign(privateKey, md.digest());
-		} else { // unsigned
-			return md.digest();
+			return Util.sign(privateKey, md.digest()); // return a signed GV
+		} else {
+			return md.digest(); // return an unsigned GV
 		}
 	}
 	
@@ -444,8 +418,7 @@ public class Node {
 		return md.digest();
 	}
 
-	// Call this function to determine what type of transaction the node should create next.
-	// Can be modified to increase how often a remove transaction is created, etc.
+	// Returns what type of transaction the node should create next
 	private static TransactionType getNextTransactionType() {
 		if (Config.mode == 0) {
 			return TransactionType.Standard;
@@ -460,6 +433,7 @@ public class Node {
 		}
 	}
 
+	// Convert a block to a JSON byte array
 	private static byte[] blockToJson(Block b) throws JsonProcessingException {
 		ObjectMapper mapper = new ObjectMapper();
 		SimpleModule module = new SimpleModule("CustomBlockSerializer", new Version(1, 0, 0, null, null, null));
@@ -468,6 +442,7 @@ public class Node {
 		return mapper.writeValueAsBytes(b);
 	}
 	
+	// Convert a JSON byte array back into a block
 	private static Block jsonToBlock(byte[] b) throws JsonParseException, JsonMappingException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		SimpleModule module = new SimpleModule("CustomBlockDeserializer", new Version(1, 0, 0, null, null, null));
@@ -476,6 +451,7 @@ public class Node {
 		return mapper.readValue(b, Block.class);
 	}
 	
+	// Convert a block into a CSV byte array
 	private static byte[] blockToCsv(Block b) {
 		StringBuilder csv = new StringBuilder();
 		// The first line contains the block ID and the previous block ID
@@ -547,6 +523,7 @@ public class Node {
 		return csv.toString().getBytes();
 	}
 	
+	// Convert a CSV byte array into a block
 	private static Block csvToBlock(byte[] csv) {
 		String csvString = new String(csv);
 		String[] lines = csvString.split("\n");
@@ -606,18 +583,20 @@ public class Node {
 			
 			b.addTransaction(t);
 		}
-		
 		return b;
 	}
 	
+	// Encode a byte array into a Base64 string
 	private static String encodeBase64(byte[] input) {
 		return Base64.getEncoder().encodeToString(input);
 	}
 
+	// Decode a Base64 string back into a byte array
 	private static byte[] decodeBase64(String input) {
 		return Base64.getDecoder().decode(input.getBytes());
 	}
 	
+	// Convert a block into the custom serialization format
 	private static byte[] blockToCustomSerialization(Block b) throws IOException {
 		ByteArrayOutputStream blockBytes = new ByteArrayOutputStream();
 		addItem(blockBytes, b.getBlockId());
@@ -663,6 +642,7 @@ public class Node {
 		return blockBytes.toByteArray();
 	}
 	
+	// Deserialize a block that has been serialized using the custom serialization algorithm 
 	private static Block customSerializationToBlock(byte[] input) {
 		Block b = new Block();
 		AtomicInteger pos = new AtomicInteger();
@@ -712,27 +692,30 @@ public class Node {
 				data.put("summaryTime", getNextItem(input, pos));
 				data.put("transorder", getNextItem(input, pos));
 				t.setData(data);
-				
-			}			
+			}
 			b.addTransaction(t);
 		}
 		return b;
 	}
 	
+	// Convert an integer into a byte array of 4 bytes
 	private static byte[] intToFourBytes(int i) {
 		return ByteBuffer.allocate(4).putInt(i).array();
 	}
 	
+	// Convert 4 bytes into an equivalent integer
 	private static int fourBytesToInt (byte[] bytes) {
 		ByteBuffer bb = ByteBuffer.wrap(bytes);
 		return bb.getInt();
 	}
 	
+	// Used by the custom serialization algorithm to add the size of a byte array, as well as the byte array itself 
 	private static void addItem(ByteArrayOutputStream blockBytes, byte[] item) throws IOException {
 		blockBytes.write(intToFourBytes(item.length));
 		blockBytes.write(item);
 	}
 	
+	// Used for deserializing a block that has been serialized using the custom serialization algorithm 
 	private static byte[] getNextItem(byte[] input, AtomicInteger pos) {
 		int posInt = pos.get();
 		int itemLength = fourBytesToInt(Arrays.copyOfRange(input, posInt, posInt+4));

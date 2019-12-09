@@ -1,4 +1,3 @@
-import static org.fusesource.leveldbjni.JniDBFactory.bytes;
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.File;
@@ -7,7 +6,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -16,15 +14,8 @@ import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import javax.xml.bind.DatatypeConverter;
 
 import org.iq80.leveldb.DB;
-import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
 public class SearchAgent {
@@ -57,8 +48,6 @@ public class SearchAgent {
 			// If this block is already in the database, then it is an updated
 			// block which has already had its remove and summary transactions processed
 			if (db.get(currentBlock.getBlockId()) == null) {
-				//System.out.println("Received new block from miner");
-				
 				// Add the block to the blockchain
 				db.put(currentBlock.getBlockId(), Util.serialize(currentBlock));
 				
@@ -68,7 +57,6 @@ public class SearchAgent {
 						// Extract the location of the transaction to be removed
 						HashMap<String, byte[]> transactionData = t.getData();
 						TransactionLocation tl = Util.deserialize(transactionData.get("location"));
-						//System.out.println("Found transaction to remove = " + DatatypeConverter.printHexBinary(tl.getTransactionID()));
 						
 						// Verify if the creator of this transaction is the same node
 						// that created the transaction that is to be removed
@@ -86,12 +74,14 @@ public class SearchAgent {
 							System.exit(0);
 						}
 						
+						// Check that the GV is valid 
 						PublicKey pubKey = Util.deserialize(transactionData.get("pubKey"));
 						if (!Util.verify(pubKey, transactionData.get("unsignedGv"), toRemove.getGv())) {
 							System.out.println("Failed 1st verification check");
 							continue;
 						}
 						
+						// Check that the signature is valid
 						if (!Util.verify(pubKey, transactionData.get("sigMessage"), transactionData.get("sig"))) {
 							System.out.println("Failed 2nd verification check");
 							continue;
@@ -143,9 +133,8 @@ public class SearchAgent {
 							md.update(prevTid);
 							byte[] unsignedGV = md.digest();
 							
-							// Check the GV is valid
+							// Check that the GV is valid
 							PublicKey pubKey = Util.deserialize(transactionData.get("pubKey"));
-							
 							if (!Util.verify(pubKey, unsignedGV, toRemove.getGv())) {
 								System.out.println("Failed 1st verification check");
 								continue;
@@ -158,7 +147,6 @@ public class SearchAgent {
 							}
 							validLocations.add(tl);
 						}
-						
 						
 						// Send the locations to the summary manager agent
 						// Open a connection

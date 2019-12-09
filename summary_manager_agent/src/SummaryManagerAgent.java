@@ -60,7 +60,6 @@ public class SummaryManagerAgent {
 			
 			// Received a block from the miner
 			if (Util.socketClientName(connectionSocket).equals("miner")) {
-				//System.out.println("Received a block from the miner");
 				// Add it to the database
 				Block b = (Block) in.readObject();
 				db.put(b.getBlockId(), Util.serialize(b));
@@ -68,7 +67,6 @@ public class SummaryManagerAgent {
 			// Received a summary transaction location from the search agent
 			} else if (Util.socketClientName(connectionSocket).equals("search_agent")) {
 				ArrayList<TransactionLocation> locations = (ArrayList<TransactionLocation>) in.readObject();
-				//System.out.println("received transaction locations from search agent");
 				// If the block to be updated is not already in updatedBlocks list,
 				// get it from the database
 				updatedBlocksLock.lock();
